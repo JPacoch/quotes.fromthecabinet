@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Share2, ChevronRight } from "lucide-react";
+import { Share2, ArrowRight } from "lucide-react";
 
 export interface Quote {
     id: string;
@@ -29,9 +29,99 @@ function formatDateline(isoDate: string): string {
     }).toUpperCase();
 }
 
-export default function QuoteDisplay({ quote, isFlashing, isLoading, onNext, onShare }: QuoteDisplayProps) {
-    const spring = { type: "spring" as const, stiffness: 120, damping: 22, mass: 1 };
+function splitWords(text: string) {
+    return text.split(" ").map((word, i) => (
+        <span key={i} className="quote-word" style={{ marginRight: "0.28em" }}>
+            {word}
+        </span>
+    ));
+}
 
+const containerVariants = {
+    hidden: {},
+    visible: {
+        transition: {
+            staggerChildren: 0.04,
+            delayChildren: 0.1,
+        },
+    },
+    exit: {
+        transition: { staggerChildren: 0.02, staggerDirection: -1 },
+    },
+};
+
+const wordVariants = {
+    hidden: { opacity: 0, y: 22, filter: "blur(4px)" },
+    visible: {
+        opacity: 1,
+        y: 0,
+        filter: "blur(0px)",
+        transition: { type: "spring" as const, stiffness: 160, damping: 24 },
+    },
+    exit: {
+        opacity: 0,
+        y: -10,
+        filter: "blur(2px)",
+        transition: { duration: 0.18 },
+    },
+};
+
+const itemVariants = {
+    hidden: { opacity: 0, y: 14 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        transition: { type: "spring" as const, stiffness: 160, damping: 24 },
+    },
+    exit: { opacity: 0, y: -8, transition: { duration: 0.16 } },
+};
+
+function MagneticButton({ children, className, onClick, disabled, "aria-label": ariaLabel }: {
+    children: React.ReactNode;
+    className: string;
+    onClick?: () => void;
+    disabled?: boolean;
+    "aria-label"?: string;
+}) {
+    return (
+        <motion.button
+            className={className}
+            onClick={onClick}
+            disabled={disabled}
+            aria-label={ariaLabel}
+            whileTap={{ scale: 0.97 }}
+        >
+            {children}
+        </motion.button>
+    );
+}
+
+function QuoteSkeleton() {
+    return (
+        <div className="skeleton-stage">
+            <div className="skeleton-wrapper">
+                <div className="skeleton-pill" />
+                <div className="skeleton-text">
+                    <div className="skeleton-line" />
+                    <div className="skeleton-line" />
+                    <div className="skeleton-line skeleton-line--sm" />
+                </div>
+                <div className="skeleton-attr">
+                    <div className="skeleton-rule" />
+                    <div className="skeleton-author" />
+                </div>
+                <div className="skeleton-actions">
+                    <div className="skeleton-btn skeleton-btn--ghost" />
+                    <div className="skeleton-btn skeleton-btn--primary" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export { QuoteSkeleton };
+
+export default function QuoteDisplay({ quote, isFlashing, isLoading, onNext, onShare }: QuoteDisplayProps) {
     return (
         <main>
             {/* Flash overlay */}
@@ -42,25 +132,22 @@ export default function QuoteDisplay({ quote, isFlashing, isLoading, onNext, onS
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.1 }}
+                        transition={{ duration: 0.12 }}
                     />
                 )}
             </AnimatePresence>
 
-            {/* Loading overlay */}
+            {/* Transition loading overlay */}
             <AnimatePresence>
                 {isLoading && (
                     <motion.div
-                        className="loading-overlay"
+                        className="flash-overlay"
+                        style={{ opacity: 0 }}
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
+                        animate={{ opacity: 0.6 }}
                         exit={{ opacity: 0 }}
-                    >
-                        <div className="loading-inner">
-                            <div className="loading-spinner" />
-                            <span className="loading-label">Retrieving</span>
-                        </div>
-                    </motion.div>
+                        transition={{ duration: 0.2 }}
+                    />
                 )}
             </AnimatePresence>
 
@@ -69,82 +156,81 @@ export default function QuoteDisplay({ quote, isFlashing, isLoading, onNext, onS
                     <motion.div
                         key={quote.id}
                         className="quote-wrapper"
-                        initial={{ opacity: 0, y: 28 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -14, transition: { duration: 0.18 } }}
-                        transition={spring}
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
                     >
-                        {/* Dateline */}
-                        <motion.div
-                            className="quote-dateline"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.1, duration: 0.7 }}
-                        >
+                        {/* Dateline pill */}
+                        <motion.div className="quote-dateline" variants={itemVariants}>
                             {formatDateline(quote.date)}
                         </motion.div>
 
-                        {/* Quote text — sits directly on background */}
+                        {/* Quote text — word-by-word stagger */}
                         <motion.blockquote
                             className="quote-text"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.18, duration: 0.9 }}
+                            variants={containerVariants}
+                            aria-label={quote.text}
                         >
-                            {quote.text}
+                            <span aria-hidden="true">
+                                {splitWords(quote.text).map((wordSpan, i) => (
+                                    <motion.span
+                                        key={i}
+                                        className="quote-word"
+                                        style={{ display: "inline-block", marginRight: "0.28em" }}
+                                        variants={wordVariants}
+                                    >
+                                        {quote.text.split(" ")[i]}
+                                    </motion.span>
+                                ))}
+                            </span>
                         </motion.blockquote>
 
                         {/* Attribution */}
-                        <motion.div
-                            className="quote-attribution"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.3, duration: 0.7 }}
-                        >
-                            <span className="quote-rule" />
+                        <motion.div className="quote-attribution" variants={itemVariants}>
+                            <motion.span
+                                className="quote-rule"
+                                initial={{ scaleX: 0, opacity: 0 }}
+                                animate={{ scaleX: 1, opacity: 0.3 }}
+                                transition={{ delay: 0.5, duration: 0.6, ease: "easeOut" }}
+                                style={{ width: 28, transformOrigin: "left" }}
+                            />
                             <span className="quote-author">— {quote.author}</span>
-                            <span className="quote-context">{quote.context}</span>
+                            {quote.context && (
+                                <span className="quote-context">{quote.context}</span>
+                            )}
                         </motion.div>
 
-                        {/* Action row — directly under quote */}
-                        <motion.div
-                            className="quote-actions"
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.44, duration: 0.6 }}
-                        >
+                        {/* Action row */}
+                        <motion.div className="quote-actions" variants={itemVariants}>
                             {/* Share — ghost */}
-                            <motion.button
+                            <MagneticButton
                                 className="q-btn q-btn--ghost"
                                 onClick={onShare}
-                                whileTap={{ scale: 0.97 }}
-                                transition={{ type: "spring", stiffness: 400, damping: 28 }}
                                 aria-label="Share this quote"
                             >
                                 <span style={{ display: "inline-flex", position: "relative", zIndex: 1 }}>
                                     <Share2 size={13} strokeWidth={1.5} aria-hidden="true" />
                                 </span>
                                 <span>Share</span>
-                            </motion.button>
+                            </MagneticButton>
 
                             {/* Another thought — primary */}
-                            <motion.button
+                            <MagneticButton
                                 className="q-btn q-btn--primary"
                                 onClick={onNext}
                                 disabled={isLoading}
-                                whileTap={{ scale: 0.97 }}
-                                transition={{ type: "spring", stiffness: 400, damping: 28 }}
                                 aria-label="Show another quote"
                             >
                                 <span>Another thought</span>
                                 <motion.span
-                                    animate={{ x: isLoading ? [0, 3, 0] : 0 }}
-                                    transition={{ repeat: isLoading ? Infinity : 0, duration: 0.8 }}
-                                    style={{ display: "inline-flex" }}
+                                    animate={{ x: isLoading ? [0, 4, 0] : 0 }}
+                                    transition={{ repeat: isLoading ? Infinity : 0, duration: 0.7 }}
+                                    style={{ display: "inline-flex", position: "relative", zIndex: 1 }}
                                 >
-                                    <ChevronRight size={14} strokeWidth={1.5} aria-hidden="true" />
+                                    <ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" />
                                 </motion.span>
-                            </motion.button>
+                            </MagneticButton>
                         </motion.div>
                     </motion.div>
                 </AnimatePresence>

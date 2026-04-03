@@ -14,31 +14,46 @@ export default function Header() {
             setIsDark(true);
         }
 
-        const onScroll = () => setScrolled(window.scrollY > 8);
+        const onScroll = () => setScrolled(window.scrollY > 12);
         window.addEventListener("scroll", onScroll, { passive: true });
         return () => window.removeEventListener("scroll", onScroll);
     }, []);
 
     const toggleTheme = () => {
         const next = !isDark;
-        setIsDark(next);
-        if (next) {
-            document.documentElement.setAttribute("data-theme", "dark");
-            localStorage.setItem("theme", "dark");
+
+        const applyTheme = () => {
+            setIsDark(next);
+            if (next) {
+                document.documentElement.setAttribute("data-theme", "dark");
+                localStorage.setItem("theme", "dark");
+            } else {
+                document.documentElement.removeAttribute("data-theme");
+                localStorage.setItem("theme", "light");
+            }
+        };
+
+        if ("startViewTransition" in document) {
+            (document as Document & { startViewTransition: (cb: () => void) => void })
+                .startViewTransition(applyTheme);
         } else {
-            document.documentElement.removeAttribute("data-theme");
-            localStorage.setItem("theme", "light");
+            applyTheme();
         }
     };
 
     return (
-        <header className={scrolled ? "scrolled" : ""}>
+        <motion.header
+            className={scrolled ? "scrolled" : ""}
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 30, delay: 0.05 }}
+        >
             <div className="container">
                 <nav className="nav">
                     {/* Left — brand */}
                     <div className="brand">
                         <span className="brand-title">Quotes from the Cabinet</span>
-                        <span className="brand-sub">A quote for every day</span>
+                        {/* <span className="brand-sub">A quote for every day</span> */}
                     </div>
 
                     {/* Right — actions */}
@@ -62,15 +77,16 @@ export default function Header() {
                                 }}
                                 transition={{ type: "spring", stiffness: 400, damping: 28 }}
                             >
-                                {/* Arrow left */}
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                     <path d="M19 12H5M12 5l-7 7 7 7" />
                                 </svg>
                             </motion.span>
                             <span>The Cabinet</span>
                         </motion.a>
 
-                        {/* Abstract theme toggle */}
+                        <div className="nav-divider" aria-hidden="true" />
+
+                        {/* Theme toggle */}
                         <button
                             className={`theme-toggle${isDark ? " is-dark" : ""}`}
                             onClick={toggleTheme}
@@ -83,6 +99,6 @@ export default function Header() {
                     </div>
                 </nav>
             </div>
-        </header>
+        </motion.header>
     );
 }

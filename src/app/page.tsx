@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { MotionConfig } from "framer-motion";
 import Header from "@/components/Header";
-import QuoteDisplay, { Quote } from "@/components/QuoteDisplay";
+import QuoteDisplay, { Quote, QuoteSkeleton } from "@/components/QuoteDisplay";
 import ShareModal from "@/components/ShareModal";
 import PhilosophicalCursor from "@/components/PhilosophicalCursor";
 
-/** Map Supabase row shape → Quote interface used by the UI */
 function rowToQuote(row: {
   id: string;
   content: string;
@@ -22,6 +22,13 @@ function rowToQuote(row: {
     date: row.publish_date,
   };
 }
+
+const springConfig = {
+  type: "spring" as const,
+  stiffness: 140,
+  damping: 22,
+  mass: 1,
+};
 
 export default function Home() {
   const [currentQuote, setCurrentQuote] = useState<Quote | null>(null);
@@ -70,53 +77,63 @@ export default function Home() {
     }, 150);
   }, [isLoading, currentQuote]);
 
-  if (isLoading && !currentQuote) {
-    return (
-      <div className="site">
-        <PhilosophicalCursor />
-        <Header />
-        <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-          <div className="loading-inner">
-            <div className="loading-spinner" />
-            <span className="loading-label">Loading</span>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (error || !currentQuote) {
-    return (
-      <div className="site">
-        <PhilosophicalCursor />
-        <Header />
-        <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-          <p style={{ opacity: 0.5, fontSize: "0.85rem", letterSpacing: "0.08em" }}>
-            {error ?? "No quote available."}
-          </p>
-        </main>
-      </div>
-    );
-  }
-
   return (
-    <div className="site">
-      <PhilosophicalCursor />
-      <Header />
+    <MotionConfig transition={springConfig}>
+      <div className="site">
+        <PhilosophicalCursor />
+        <Header />
 
-      <QuoteDisplay
-        quote={currentQuote}
-        isFlashing={isFlashing}
-        isLoading={isLoading}
-        onNext={handleNextQuote}
-        onShare={() => setShareOpen(true)}
-      />
+        {/* Initial loading skeleton */}
+        {isLoading && !currentQuote && <QuoteSkeleton />}
 
-      <ShareModal
-        isOpen={shareOpen}
-        onClose={() => setShareOpen(false)}
-        quote={currentQuote}
-      />
-    </div>
+        {/* Error state */}
+        {!isLoading && (error || !currentQuote) && (
+          <main style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "calc(100dvh - 65px)",
+            flexDirection: "column",
+            gap: "16px",
+          }}>
+            <p style={{
+              fontFamily: '"Fraunces", serif',
+              fontStyle: "italic",
+              fontWeight: 300,
+              fontSize: "1.1rem",
+              opacity: 0.45,
+              letterSpacing: "-0.01em",
+            }}>
+              {error ?? "No quote available."}
+            </p>
+            <button
+              className="q-btn q-btn--ghost"
+              onClick={() => window.location.reload()}
+              style={{ fontSize: "0.6rem" }}
+            >
+              Try again
+            </button>
+          </main>
+        )}
+
+        {/* Main content */}
+        {currentQuote && (
+          <>
+            <QuoteDisplay
+              quote={currentQuote}
+              isFlashing={isFlashing}
+              isLoading={isLoading}
+              onNext={handleNextQuote}
+              onShare={() => setShareOpen(true)}
+            />
+            <ShareModal
+              isOpen={shareOpen}
+              onClose={() => setShareOpen(false)}
+              quote={currentQuote}
+            />
+          </>
+        )}
+      </div>
+    </MotionConfig>
   );
 }

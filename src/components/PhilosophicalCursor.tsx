@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+
 export default function PhilosophicalCursor() {
     const dotRef = useRef<HTMLDivElement>(null);
     const ringRef = useRef<HTMLDivElement>(null);
-    const pos = useRef({ x: -100, y: -100 });
-    const ring = useRef({ x: -100, y: -100 });
+    const pos = useRef({ x: -200, y: -200 });
+    const ring = useRef({ x: -200, y: -200 });
     const rafId = useRef<number>(0);
 
     useEffect(() => {
         const isTouch = matchMedia("(pointer: coarse)").matches;
         const prefersReduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-
         if (isTouch || prefersReduced) return;
 
         document.body.classList.add("cursor-on");
@@ -21,25 +21,22 @@ export default function PhilosophicalCursor() {
             pos.current.y = e.clientY;
         };
 
-        const onEnterInteractive = () => {
+        const onEnter = () => {
             dotRef.current?.classList.add("cursor-dot--hover");
             ringRef.current?.classList.add("cursor-ring--hover");
         };
-
-        const onLeaveInteractive = () => {
+        const onLeave = () => {
             dotRef.current?.classList.remove("cursor-dot--hover");
             ringRef.current?.classList.remove("cursor-ring--hover");
         };
 
-        const attachHoverListeners = () => {
-            const interactives = document.querySelectorAll("a, button, [role='button'], input, textarea, select, label");
-            interactives.forEach((el) => {
-                el.addEventListener("mouseenter", onEnterInteractive);
-                el.addEventListener("mouseleave", onLeaveInteractive);
+        const attach = () => {
+            document.querySelectorAll("a, button, [role='button'], input, textarea, select, label").forEach((el) => {
+                el.addEventListener("mouseenter", onEnter);
+                el.addEventListener("mouseleave", onLeave);
             });
         };
-
-        attachHoverListeners();
+        attach();
 
         const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
@@ -47,14 +44,11 @@ export default function PhilosophicalCursor() {
             if (dotRef.current) {
                 dotRef.current.style.transform = `translate(${pos.current.x}px, ${pos.current.y}px)`;
             }
-
-            ring.current.x = lerp(ring.current.x, pos.current.x, 0.1);
-            ring.current.y = lerp(ring.current.y, pos.current.y, 0.1);
-
+            ring.current.x = lerp(ring.current.x, pos.current.x, 0.12);
+            ring.current.y = lerp(ring.current.y, pos.current.y, 0.12);
             if (ringRef.current) {
                 ringRef.current.style.transform = `translate(${ring.current.x}px, ${ring.current.y}px)`;
             }
-
             rafId.current = requestAnimationFrame(tick);
         };
 
@@ -70,9 +64,7 @@ export default function PhilosophicalCursor() {
 
     return (
         <>
-            {/* Precise inner dot */}
             <div ref={dotRef} className="cursor-dot" aria-hidden="true" />
-            {/* Trailing ring */}
             <div ref={ringRef} className="cursor-ring" aria-hidden="true" />
         </>
     );
