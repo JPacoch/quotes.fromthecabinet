@@ -1,13 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import gsap from "gsap";
 
 export default function PhilosophicalCursor() {
-    const dotRef = useRef<HTMLDivElement>(null);
-    const ringRef = useRef<HTMLDivElement>(null);
-    const pos = useRef({ x: -200, y: -200 });
-    const ring = useRef({ x: -200, y: -200 });
-    const rafId = useRef<number>(0);
+    const cursorRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const isTouch = matchMedia("(pointer: coarse)").matches;
@@ -16,56 +13,43 @@ export default function PhilosophicalCursor() {
 
         document.body.classList.add("cursor-on");
 
+        const xTo = gsap.quickTo(cursorRef.current, "x", { duration: 0.5, ease: "power3" });
+        const yTo = gsap.quickTo(cursorRef.current, "y", { duration: 0.5, ease: "power3" });
+
         const onMove = (e: PointerEvent) => {
-            pos.current.x = e.clientX;
-            pos.current.y = e.clientY;
+            xTo(e.clientX);
+            yTo(e.clientY);
         };
 
-        const onEnter = () => {
-            dotRef.current?.classList.add("cursor-dot--hover");
-            ringRef.current?.classList.add("cursor-ring--hover");
-        };
-        const onLeave = () => {
-            dotRef.current?.classList.remove("cursor-dot--hover");
-            ringRef.current?.classList.remove("cursor-ring--hover");
-        };
-
-        const attach = () => {
-            document.querySelectorAll("a, button, [role='button'], input, textarea, select, label").forEach((el) => {
-                el.addEventListener("mouseenter", onEnter);
-                el.addEventListener("mouseleave", onLeave);
-            });
-        };
-        attach();
-
-        const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
-        const tick = () => {
-            if (dotRef.current) {
-                dotRef.current.style.transform = `translate(${pos.current.x}px, ${pos.current.y}px)`;
+        const onMouseOver = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.closest("a, button, .theme-toggle, [role='button']")) {
+                gsap.to(cursorRef.current, { scale: 3.6, duration: 0.4, ease: "power3.out" });
             }
-            ring.current.x = lerp(ring.current.x, pos.current.x, 0.12);
-            ring.current.y = lerp(ring.current.y, pos.current.y, 0.12);
-            if (ringRef.current) {
-                ringRef.current.style.transform = `translate(${ring.current.x}px, ${ring.current.y}px)`;
+        };
+
+        const onMouseOut = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.closest("a, button, .theme-toggle, [role='button']")) {
+                gsap.to(cursorRef.current, { scale: 1, duration: 0.4, ease: "power3.out" });
             }
-            rafId.current = requestAnimationFrame(tick);
         };
 
         window.addEventListener("pointermove", onMove, { passive: true });
-        rafId.current = requestAnimationFrame(tick);
+        window.addEventListener("mouseover", onMouseOver, { passive: true });
+        window.addEventListener("mouseout", onMouseOut, { passive: true });
+
+        gsap.set(cursorRef.current, { x: -200, y: -200 });
 
         return () => {
             window.removeEventListener("pointermove", onMove);
-            cancelAnimationFrame(rafId.current);
+            window.removeEventListener("mouseover", onMouseOver);
+            window.removeEventListener("mouseout", onMouseOut);
             document.body.classList.remove("cursor-on");
         };
     }, []);
 
     return (
-        <>
-            <div ref={dotRef} className="cursor-dot" aria-hidden="true" />
-            <div ref={ringRef} className="cursor-ring" aria-hidden="true" />
-        </>
+        <div ref={cursorRef} className="cursor-pristine" aria-hidden="true" />
     );
 }

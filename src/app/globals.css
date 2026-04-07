@@ -88,45 +88,18 @@ body.cursor-on * {
   cursor: none !important;
 }
 
-.cursor-dot {
+.cursor-pristine {
   position: fixed;
   top: 0; left: 0;
-  width: 5px; height: 5px;
+  width: 14px; height: 14px;
+  background-color: #fff;
   border-radius: 50%;
-  background: var(--accent);
   pointer-events: none;
   z-index: 9999;
-  margin-top: -2.5px;
-  margin-left: -2.5px;
-  transition: width 0.2s ease, height 0.2s ease, background 0.2s ease;
-  will-change: transform;
-}
-
-.cursor-ring {
-  position: fixed;
-  top: 0; left: 0;
-  width: 30px; height: 30px;
-  border-radius: 50%;
-  border: 1px solid var(--accent);
-  pointer-events: none;
-  z-index: 9998;
-  margin-top: -15px;
-  margin-left: -15px;
   mix-blend-mode: difference;
+  margin-top: -7px;
+  margin-left: -7px;
   will-change: transform;
-  transition: width 0.3s cubic-bezier(0.16,1,0.3,1), height 0.3s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease;
-  opacity: 0.6;
-}
-
-.cursor-dot--hover {
-  width: 8px; height: 8px;
-  margin-top: -4px; margin-left: -4px;
-  background: var(--accent-2);
-}
-.cursor-ring--hover {
-  width: 42px; height: 42px;
-  margin-top: -21px; margin-left: -21px;
-  opacity: 0.4;
 }
 
 /* ── Body & background ── */
