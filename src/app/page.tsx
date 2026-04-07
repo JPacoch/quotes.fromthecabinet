@@ -32,7 +32,6 @@ const springConfig = {
 
 export default function Home() {
   const [currentQuote, setCurrentQuote] = useState<Quote | null>(null);
-  const [isFlashing, setIsFlashing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [shareOpen, setShareOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,25 +55,21 @@ export default function Home() {
   const handleNextQuote = useCallback(() => {
     if (isLoading || !currentQuote) return;
 
-    setIsFlashing(true);
-    setTimeout(() => {
-      setIsFlashing(false);
-      setIsLoading(true);
+    setIsLoading(true);
 
-      fetch(`/api/quote/random?exclude=${currentQuote.id}`)
-        .then((r) => {
-          if (!r.ok) throw new Error("No other quotes available");
-          return r.json();
-        })
-        .then((row) => {
-          setCurrentQuote(rowToQuote(row));
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          setError(err.message);
-          setIsLoading(false);
-        });
-    }, 150);
+    fetch(`/api/quote/random?exclude=${currentQuote.id}`)
+      .then((r) => {
+        if (!r.ok) throw new Error("No other quotes available");
+        return r.json();
+      })
+      .then((row) => {
+        setCurrentQuote(rowToQuote(row));
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setIsLoading(false);
+      });
   }, [isLoading, currentQuote]);
 
   return (
@@ -121,7 +116,6 @@ export default function Home() {
           <>
             <QuoteDisplay
               quote={currentQuote}
-              isFlashing={isFlashing}
               isLoading={isLoading}
               onNext={handleNextQuote}
               onShare={() => setShareOpen(true)}

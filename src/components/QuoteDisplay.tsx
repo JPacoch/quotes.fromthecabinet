@@ -13,7 +13,6 @@ export interface Quote {
 
 interface QuoteDisplayProps {
     quote: Quote;
-    isFlashing: boolean;
     isLoading: boolean;
     onNext: () => void;
     onShare: () => void;
@@ -63,6 +62,22 @@ const wordVariants = {
         y: -10,
         filter: "blur(2px)",
         transition: { duration: 0.18 },
+    },
+};
+
+const quoteMarkVariants = {
+    hidden: { opacity: 0, x: "-50%", y: -10 },
+    visible: {
+        opacity: 0.055,
+        x: "-50%",
+        y: 0,
+        transition: { type: "spring" as const, stiffness: 160, damping: 24 },
+    },
+    exit: {
+        opacity: 0,
+        x: "-50%",
+        y: -10,
+        transition: { duration: 0.16 },
     },
 };
 
@@ -121,36 +136,9 @@ function QuoteSkeleton() {
 
 export { QuoteSkeleton };
 
-export default function QuoteDisplay({ quote, isFlashing, isLoading, onNext, onShare }: QuoteDisplayProps) {
+export default function QuoteDisplay({ quote, isLoading, onNext, onShare }: QuoteDisplayProps) {
     return (
         <main>
-            {/* Flash overlay */}
-            <AnimatePresence>
-                {isFlashing && (
-                    <motion.div
-                        className="flash-overlay"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.12 }}
-                    />
-                )}
-            </AnimatePresence>
-
-            {/* Transition loading overlay */}
-            <AnimatePresence>
-                {isLoading && (
-                    <motion.div
-                        className="flash-overlay"
-                        style={{ opacity: 0 }}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 0.6 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                    />
-                )}
-            </AnimatePresence>
-
             <div className="quote-stage">
                 <AnimatePresence mode="wait">
                     <motion.div
@@ -172,6 +160,13 @@ export default function QuoteDisplay({ quote, isFlashing, isLoading, onNext, onS
                             variants={containerVariants}
                             aria-label={quote.text}
                         >
+                            <motion.span
+                                aria-hidden="true"
+                                className="quote-mark-bg"
+                                variants={quoteMarkVariants}
+                            >
+                                {"\u201C"}
+                            </motion.span>
                             <span aria-hidden="true">
                                 {splitWords(quote.text).map((wordSpan, i) => (
                                     <motion.span

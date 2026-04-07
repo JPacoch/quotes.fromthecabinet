@@ -433,8 +433,7 @@ main {
 }
 
 /* Decorative large quote mark */
-.quote-text::before {
-  content: "\201C";
+.quote-mark-bg {
   position: absolute;
   top: -0.2em;
   left: 50%;
@@ -443,7 +442,6 @@ main {
   line-height: 1;
   font-style: normal;
   color: var(--accent);
-  opacity: 0.055;
   pointer-events: none;
   font-weight: 300;
 }
