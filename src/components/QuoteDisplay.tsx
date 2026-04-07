@@ -18,14 +18,18 @@ interface QuoteDisplayProps {
     onShare: () => void;
 }
 
+function getISOWeekNumber(d: Date) {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
 function formatDateline(isoDate: string): string {
     const d = new Date(isoDate + "T00:00:00");
-    return d.toLocaleDateString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-    }).toUpperCase();
+    const week = getISOWeekNumber(d);
+    return `WEEK ${week}, ${d.getFullYear()}`;
 }
 
 function splitWords(text: string) {
