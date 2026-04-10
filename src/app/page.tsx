@@ -6,6 +6,8 @@ import Header from "@/components/Header";
 import QuoteDisplay, { Quote, QuoteSkeleton } from "@/components/QuoteDisplay";
 import ShareModal from "@/components/ShareModal";
 import PhilosophicalCursor from "@/components/PhilosophicalCursor";
+import Preloader from "@/components/Preloader";
+import { AnimatePresence } from "framer-motion";
 
 function rowToQuote(row: {
   id: string;
@@ -35,6 +37,23 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [shareOpen, setShareOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPreloader, setShowPreloader] = useState(true);
+
+  useEffect(() => {
+    let preloaderTimer: NodeJS.Timeout;
+
+    if (!isLoading) {
+      setShowPreloader(false);
+    } else {
+      preloaderTimer = setTimeout(() => {
+        setShowPreloader(false);
+      }, 3000);
+    }
+
+    return () => {
+      if (preloaderTimer) clearTimeout(preloaderTimer);
+    };
+  }, [isLoading]);
 
   useEffect(() => {
     fetch("/api/quote/today")
@@ -74,6 +93,10 @@ export default function Home() {
 
   return (
     <MotionConfig transition={springConfig}>
+      <AnimatePresence>
+        {showPreloader && <Preloader key="preloader" />}
+      </AnimatePresence>
+
       <div className="site">
         <PhilosophicalCursor />
         <Header />
