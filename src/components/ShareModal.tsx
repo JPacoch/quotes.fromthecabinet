@@ -16,7 +16,9 @@ export default function ShareModal({ isOpen, onClose, quote }: ShareModalProps) 
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(window.location.href);
+            const shareText = `"${quote.text}" — ${quote.author}`;
+            const url = window.location.href;
+            await navigator.clipboard.writeText(`${shareText}\n${url}`);
             setCopied(true);
             setTimeout(() => setCopied(false), 2200);
         } catch {
@@ -31,8 +33,8 @@ export default function ShareModal({ isOpen, onClose, quote }: ShareModalProps) 
 
     const urls = {
         twitter: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
-        facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`,
-        linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}&summary=${encodedText}`,
+        facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodeURIComponent(shareText + "\n" + url)}`,
+        linkedin: `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(shareText + "\n" + url)}`,
     };
 
     useEffect(() => {
