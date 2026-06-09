@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Quotes from the Cabinet",
-  description: "A curated collection of timeless quotes, one per day.",
+  description: "A curated collection of philosophical quotes, one per week.",
 };
 
 export default function RootLayout({

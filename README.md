@@ -1,6 +1,6 @@
 # Quotes from the Cabinet
 
-Quotes from the Cabinet is a dedicated subpage and companion application for the philosophical blog [fromthecabinet.com](https://fromthecabinet.com). It serves as a digital archive of curated wisdom, offering a minimalist interface for daily reflection.
+Quotes from the Cabinet is a dedicated subpage and companion application for the philosophical blog [fromthecabinet.com](https://fromthecabinet.com). Every Monday, a new quote is featured to ground the week.
 
 The application presents a specific quote selected for the current date, while providing the functionality to navigate through history and share insights across social platforms.
 
@@ -36,6 +36,10 @@ bun install
 ```bash
 bun dev
 ```
+
+### 🤝 Contributing
+
+While this is a curated personal project, I welcome suggestions for future quotes. Please feel free to open an issue or submit a pull request with a quote, the author, and a brief note on why it fits the "Cabinet" theme.
 
 ## License
 

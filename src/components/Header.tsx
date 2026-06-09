@@ -61,7 +61,6 @@ export default function Header() {
                         {/* Blog back-link */}
                         <motion.a
                             href="https://fromthecabinet.com"
-                            target="_blank"
                             rel="noopener noreferrer"
                             className="back-link"
                             aria-label="Back to From the Cabinet"
