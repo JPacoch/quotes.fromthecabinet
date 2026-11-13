@@ -1,10 +1,50 @@
 import type { Metadata } from "next";
+import LinkTooltip from "@/components/LinkTooltip";
 import "./globals.css";
 
+const SITE_URL = "https://quotes.fromthecabinet.com";
+
 export const metadata: Metadata = {
-  title: "Quotes from the Cabinet",
-  description: "A curated collection of philosophical quotes, one per week.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Quotes — From the Cabinet",
+    template: "%s — From the Cabinet",
+  },
+  description:
+    "Collected passages, aphorisms, and marginalia worth keeping close.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Quotes — From the Cabinet",
+    description:
+      "Collected passages, aphorisms, and marginalia worth keeping close.",
+    url: SITE_URL,
+    siteName: "From the Cabinet",
+    type: "website",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
+
+const themeInitScript = `
+(function () {
+  var doc = document.documentElement;
+  doc.classList.add('js');
+  try {
+    var stored = localStorage.getItem('cabinet-theme');
+    var theme = stored === 'dark' || stored === 'light'
+      ? stored
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    doc.setAttribute('data-theme', theme);
+  } catch (e) {
+    var fallback = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    doc.setAttribute('data-theme', fallback);
+  }
+})();
+`;
 
 export default function RootLayout({
   children,
@@ -12,15 +52,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,100..900;1,100..900&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Funnel+Display:wght@300..800&family=Instrument+Serif:ital@0;1&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Playfair:ital,opsz,wght@0,5..1200,300..900;1,5..1200,300..900&family=Prata&display=swap" rel="stylesheet" />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <a href="#main" className="skip-link">
+          Skip to content
+        </a>
+        {children}
+        <LinkTooltip />
+      </body>
     </html>
   );
 }
