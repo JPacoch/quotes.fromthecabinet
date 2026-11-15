@@ -7,18 +7,18 @@ const SITE_URL = "https://quotes.fromthecabinet.com";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Quotes — From the Cabinet",
+    default: "Quotes - From the Cabinet",
     template: "%s — From the Cabinet",
   },
   description:
-    "Collected passages, aphorisms, and marginalia worth keeping close.",
+    "Collected passages and aphorisms worth keeping.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "Quotes — From the Cabinet",
+    title: "Quotes - From the Cabinet",
     description:
-      "Collected passages, aphorisms, and marginalia worth keeping close.",
+      "Collected passages and aphorisms worth keeping.",
     url: SITE_URL,
     siteName: "From the Cabinet",
     type: "website",

@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatTooltipHostPath, type QuoteItem } from "@/lib/quotes";
-import ContextPopover from "@/components/ContextPopover";
 
 interface QuotesArchiveProps {
   initialQuotes: QuoteItem[];
@@ -25,17 +24,16 @@ export default function QuotesArchive({
 
   const [query, setQuery] = useState("");
   const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
+  const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [urlHydrated, setUrlHydrated] = useState(false);
 
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState<CSSProperties>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [contextState, setContextState] = useState<{
-    quote: QuoteItem;
-    anchorRect: DOMRect;
-  } | null>(null);
 
-  const popoverWrapRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const copyTimerRef = useRef<number | null>(null);
 
@@ -44,10 +42,12 @@ export default function QuotesArchive({
     const params = new URLSearchParams(window.location.search);
     const qParam = params.get("q") ?? "";
     const authorParam = params.get("author") ?? params.get("topic");
+    const sourceParam = params.get("source");
     const yearParam = params.get("year");
 
     if (qParam) setQuery(qParam);
     if (authorParam) setSelectedAuthor(authorParam);
+    if (sourceParam) setSelectedSource(sourceParam);
     if (yearParam) setSelectedYear(yearParam);
     setUrlHydrated(true);
   }, []);
@@ -60,6 +60,7 @@ export default function QuotesArchive({
     const trimmed = query.trim();
     if (trimmed) params.set("q", trimmed);
     if (selectedAuthor) params.set("author", selectedAuthor);
+    if (selectedSource) params.set("source", selectedSource);
     if (selectedYear) params.set("year", selectedYear);
 
     const qs = params.toString();
@@ -68,11 +69,52 @@ export default function QuotesArchive({
     if (nextUrl !== currentUrl) {
       window.history.replaceState(null, "", nextUrl);
     }
-  }, [query, selectedAuthor, selectedYear, urlHydrated]);
+  }, [query, selectedAuthor, selectedSource, selectedYear, urlHydrated]);
 
-  // Close Authors popover on Escape or outside click
+  const computePopoverStyle = useCallback((): CSSProperties => {
+    const btn = toggleBtnRef.current;
+    if (!btn || typeof window === "undefined") return {};
+
+    const rect = btn.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const margin = 16;
+    const top = Math.min(Math.max(margin, rect.bottom + 10), vh - 160);
+    const maxHeight = Math.max(180, vh - top - margin);
+
+    if (vw <= 640) {
+      return {
+        position: "fixed",
+        top: `${top}px`,
+        left: `${margin}px`,
+        right: `${margin}px`,
+        width: "auto",
+        maxHeight: `${maxHeight}px`,
+        overflowY: "auto",
+      };
+    }
+
+    const width = Math.min(352, vw - margin * 2);
+    const left = Math.max(margin, Math.min(rect.right - width, vw - width - margin));
+
+    return {
+      position: "fixed",
+      top: `${top}px`,
+      left: `${left}px`,
+      width: `${width}px`,
+      maxHeight: `${maxHeight}px`,
+      overflowY: "auto",
+    };
+  }, []);
+
+  // Keep fixed filter popover clamped inside the viewport and close on Escape / outside click
   useEffect(() => {
     if (!popoverOpen) return;
+
+    const syncPosition = () => {
+      setPopoverStyle(computePopoverStyle());
+    };
+    syncPosition();
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -82,18 +124,29 @@ export default function QuotesArchive({
     };
 
     const onPointerDown = (e: PointerEvent) => {
-      if (popoverWrapRef.current && !popoverWrapRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(target) &&
+        toggleBtnRef.current &&
+        !toggleBtnRef.current.contains(target)
+      ) {
         setPopoverOpen(false);
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", syncPosition);
+    window.addEventListener("scroll", syncPosition, { passive: true });
     document.addEventListener("pointerdown", onPointerDown);
+
     return () => {
       window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", syncPosition);
+      window.removeEventListener("scroll", syncPosition);
       document.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [popoverOpen]);
+  }, [popoverOpen, computePopoverStyle]);
 
   useEffect(() => {
     return () => {
@@ -103,14 +156,19 @@ export default function QuotesArchive({
     };
   }, []);
 
-  // Derived author & year facets
-  const { authors, topAuthors, years } = useMemo(() => {
+  // Derived author, source & year facets
+  const { authors, topAuthors, sources, years } = useMemo(() => {
     const authorCounts = new Map<string, number>();
+    const sourceCounts = new Map<string, number>();
     const yearSet = new Set<string>();
 
     for (const q of quotes) {
       const a = q.author.trim();
       if (a) authorCounts.set(a, (authorCounts.get(a) ?? 0) + 1);
+
+      const s = q.sourceLabel?.trim();
+      if (s) sourceCounts.set(s, (sourceCounts.get(s) ?? 0) + 1);
+
       if (q.year) yearSet.add(q.year);
     }
 
@@ -119,9 +177,15 @@ export default function QuotesArchive({
       return a[0].localeCompare(b[0]);
     });
 
+    const sortedSources = Array.from(sourceCounts.entries()).sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1];
+      return a[0].localeCompare(b[0]);
+    });
+
     return {
       authors: sortedAuthors.map(([name, count]) => ({ name, count })),
       topAuthors: sortedAuthors.slice(0, 3).map(([name]) => name),
+      sources: sortedSources.map(([name, count]) => ({ name, count })),
       years: Array.from(yearSet).sort((a, b) => b.localeCompare(a)),
     };
   }, [quotes]);
@@ -134,6 +198,12 @@ export default function QuotesArchive({
       if (selectedAuthor && q.author.toLowerCase() !== selectedAuthor.toLowerCase()) {
         return false;
       }
+      if (
+        selectedSource &&
+        (q.sourceLabel ?? "").toLowerCase() !== selectedSource.toLowerCase()
+      ) {
+        return false;
+      }
       if (selectedYear && q.year !== selectedYear) {
         return false;
       }
@@ -143,7 +213,7 @@ export default function QuotesArchive({
       }
       return true;
     });
-  }, [quotes, query, selectedAuthor, selectedYear]);
+  }, [quotes, query, selectedAuthor, selectedSource, selectedYear]);
 
   // IntersectionObserver for [data-reveal] rows below the fold
   useEffect(() => {
@@ -186,12 +256,17 @@ export default function QuotesArchive({
   const resetFilters = useCallback(() => {
     setQuery("");
     setSelectedAuthor(null);
+    setSelectedSource(null);
     setSelectedYear(null);
     setPopoverOpen(false);
   }, []);
 
   const toggleAuthor = useCallback((author: string) => {
     setSelectedAuthor((prev) => (prev === author ? null : author));
+  }, []);
+
+  const toggleSource = useCallback((source: string) => {
+    setSelectedSource((prev) => (prev === source ? null : source));
   }, []);
 
   const toggleYear = useCallback((year: string) => {
@@ -203,7 +278,6 @@ export default function QuotesArchive({
     try {
       await navigator.clipboard.writeText(formatted);
     } catch {
-      // Fallback for non-secure contexts
       const textarea = document.createElement("textarea");
       textarea.value = formatted;
       textarea.setAttribute("readonly", "");
@@ -249,26 +323,16 @@ export default function QuotesArchive({
     }
   };
 
-  const openContext = (quote: QuoteItem, triggerEl: HTMLElement) => {
-    if (contextState?.quote.id === quote.id) {
-      setContextState(null);
-      return;
-    }
-    setContextState({
-      quote,
-      anchorRect: triggerEl.getBoundingClientRect(),
-    });
-  };
-
   const formattedCount = String(filteredQuotes.length).padStart(2, "0");
   const entryNoun = filteredQuotes.length === 1 ? "Entry" : "Entries";
-  const hasActiveFilter = Boolean(query.trim() || selectedAuthor || selectedYear);
-  const popoverActive = Boolean(selectedAuthor || selectedYear);
-  const popoverLabel = selectedAuthor
-    ? `Authors · ${selectedAuthor}`
-    : selectedYear
-      ? `Authors · ${selectedYear}`
-      : "Authors";
+  const hasActiveFilter = Boolean(
+    query.trim() || selectedAuthor || selectedSource || selectedYear
+  );
+  const popoverActive = Boolean(selectedAuthor || selectedSource || selectedYear);
+  const activeFilterSummary = [selectedAuthor, selectedSource, selectedYear]
+    .filter(Boolean)
+    .join(" / ");
+  const popoverLabel = activeFilterSummary ? `Filters / ${activeFilterSummary}` : "Filters";
 
   return (
     <div className="wrap">
@@ -277,7 +341,7 @@ export default function QuotesArchive({
         <section className="page-head enter" style={{ ["--d" as string]: 0 }}>
           <div className="page-eyebrow">
             <span className="kicker" aria-live="polite">
-              Commonplace · {formattedCount} {entryNoun}
+              Commonplace / {formattedCount} {entryNoun}
             </span>
 
             <div className="eyebrow-links">
@@ -300,7 +364,7 @@ export default function QuotesArchive({
 
           <h1 className="page-title">Library</h1>
           <p className="page-lede">
-            Collected passages, aphorisms, and marginalia worth keeping close.
+            Collected passages and aphorisms worth keeping.
           </p>
         </section>
 
@@ -331,9 +395,10 @@ export default function QuotesArchive({
             <button
               type="button"
               className="filter-tab kicker"
-              aria-pressed={!selectedAuthor && !selectedYear}
+              aria-pressed={!selectedAuthor && !selectedSource && !selectedYear}
               onClick={() => {
                 setSelectedAuthor(null);
+                setSelectedSource(null);
                 setSelectedYear(null);
               }}
             >
@@ -352,19 +417,20 @@ export default function QuotesArchive({
               </button>
             ))}
 
-            {(authors.length > 0 || years.length > 1) && (
+            {(authors.length > 0 || sources.length > 0 || years.length > 1) && (
               <>
                 <span className="filter-divider" aria-hidden="true" />
 
-                <div ref={popoverWrapRef} className="authors-popover-wrap">
+                <div className="authors-popover-wrap">
                   <button
+                    ref={toggleBtnRef}
                     type="button"
                     className={`authors-toggle kicker${popoverActive ? " is-active" : ""}`}
                     aria-expanded={popoverOpen}
-                    aria-controls="authors-filter-popover"
+                    aria-controls="library-filter-popover"
                     onClick={() => setPopoverOpen((prev) => !prev)}
                   >
-                    <span>{popoverLabel}</span>
+                    <span className="authors-toggle-label">{popoverLabel}</span>
                     <svg
                       className="authors-toggle-chevron"
                       width="11"
@@ -380,71 +446,6 @@ export default function QuotesArchive({
                       <path d="m6 9 6 6 6-6" />
                     </svg>
                   </button>
-
-                  {popoverOpen && (
-                    <div
-                      id="authors-filter-popover"
-                      className="authors-popover"
-                      role="dialog"
-                      aria-label="Filter by author or year"
-                    >
-                      <div className="popover-head">
-                        <span className="popover-title">Authors &amp; years</span>
-                        {popoverActive && (
-                          <button
-                            type="button"
-                            className="popover-clear"
-                            onClick={() => {
-                              setSelectedAuthor(null);
-                              setSelectedYear(null);
-                              setPopoverOpen(false);
-                            }}
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="popover-tags">
-                        {authors.map(({ name, count }) => (
-                          <button
-                            key={name}
-                            type="button"
-                            className="tag-filter-btn"
-                            aria-pressed={selectedAuthor === name}
-                            onClick={() => {
-                              toggleAuthor(name);
-                              setPopoverOpen(false);
-                            }}
-                          >
-                            {name} ({count})
-                          </button>
-                        ))}
-                      </div>
-
-                      {years.length > 1 && (
-                        <>
-                          <span className="popover-section-label kicker">Years</span>
-                          <div className="popover-tags">
-                            {years.map((year) => (
-                              <button
-                                key={year}
-                                type="button"
-                                className="tag-filter-btn"
-                                aria-pressed={selectedYear === year}
-                                onClick={() => {
-                                  toggleYear(year);
-                                  setPopoverOpen(false);
-                                }}
-                              >
-                                {year}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
                 </div>
               </>
             )}
@@ -510,28 +511,23 @@ export default function QuotesArchive({
                       {quote.sourceLabel && (
                         <>
                           <span className="quote-sep" aria-hidden="true">
-                            ·
+                            /
                           </span>
-                          {quote.sourceUrl ? (
-                            <a
-                              href={quote.sourceUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="quote-work"
-                              data-tooltip={formatTooltipHostPath(quote.sourceUrl)}
-                            >
-                              {quote.sourceLabel} ↗
-                            </a>
-                          ) : (
-                            <span className="quote-work">{quote.sourceLabel}</span>
-                          )}
+                          <button
+                            type="button"
+                            className="source-chip quote-work"
+                            onClick={() => toggleSource(quote.sourceLabel!)}
+                            aria-pressed={selectedSource === quote.sourceLabel}
+                          >
+                            {quote.sourceLabel}
+                          </button>
                         </>
                       )}
 
                       {quote.year && (
                         <>
                           <span className="quote-sep" aria-hidden="true">
-                            ·
+                            /
                           </span>
                           <button
                             type="button"
@@ -556,7 +552,7 @@ export default function QuotesArchive({
                         {isCopied ? "Copied ✓" : "Copy"}
                       </button>
 
-                      {quote.sourceUrl ? (
+                      {quote.sourceUrl && (
                         <a
                           href={quote.sourceUrl}
                           target="_blank"
@@ -566,16 +562,7 @@ export default function QuotesArchive({
                         >
                           Source ↗
                         </a>
-                      ) : quote.source ? (
-                        <button
-                          type="button"
-                          className="quote-action-btn kicker"
-                          onClick={(e) => openContext(quote, e.currentTarget)}
-                          aria-expanded={contextState?.quote.id === quote.id}
-                        >
-                          Note
-                        </button>
-                      ) : null}
+                      )}
 
                       <Link
                         href={`/quote/${quote.id}`}
@@ -593,12 +580,99 @@ export default function QuotesArchive({
         )}
       </div>
 
-      {contextState && (
-        <ContextPopover
-          quote={contextState.quote}
-          anchorRect={contextState.anchorRect}
-          onClose={() => setContextState(null)}
-        />
+      {popoverOpen && (
+        <div
+          ref={popoverRef}
+          id="library-filter-popover"
+          className="authors-popover"
+          style={popoverStyle}
+          role="dialog"
+          aria-label="Filter by author, source, or year"
+        >
+          <div className="popover-head">
+            <span className="popover-title">Filters</span>
+            {popoverActive && (
+              <button
+                type="button"
+                className="popover-clear"
+                onClick={() => {
+                  setSelectedAuthor(null);
+                  setSelectedSource(null);
+                  setSelectedYear(null);
+                  setPopoverOpen(false);
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {authors.length > 0 && (
+            <>
+              <span className="popover-section-label kicker">Authors</span>
+              <div className="popover-tags">
+                {authors.map(({ name, count }) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className="tag-filter-btn"
+                    aria-pressed={selectedAuthor === name}
+                    onClick={() => {
+                      toggleAuthor(name);
+                      setPopoverOpen(false);
+                    }}
+                  >
+                    {name} ({count})
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {sources.length > 0 && (
+            <>
+              <span className="popover-section-label kicker">Sources</span>
+              <div className="popover-tags">
+                {sources.map(({ name, count }) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className="tag-filter-btn"
+                    aria-pressed={selectedSource === name}
+                    onClick={() => {
+                      toggleSource(name);
+                      setPopoverOpen(false);
+                    }}
+                  >
+                    {name} ({count})
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {years.length > 1 && (
+            <>
+              <span className="popover-section-label kicker">Years</span>
+              <div className="popover-tags">
+                {years.map((year) => (
+                  <button
+                    key={year}
+                    type="button"
+                    className="tag-filter-btn"
+                    aria-pressed={selectedYear === year}
+                    onClick={() => {
+                      toggleYear(year);
+                      setPopoverOpen(false);
+                    }}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

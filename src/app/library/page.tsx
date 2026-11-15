@@ -7,9 +7,9 @@ import { fetchPublishedQuotes } from "@/lib/quotes";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Library — Quotes",
+  title: "Library - Quotes",
   description:
-    "Browse and search the complete archive of collected passages, aphorisms, and marginalia.",
+    "Browse and search the complete archive of collected passages and aphorisms.",
   alternates: {
     canonical: "/library",
   },

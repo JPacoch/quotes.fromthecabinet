@@ -105,21 +105,18 @@ export default function SharePopover({ quote, onClose }: SharePopoverProps) {
       }}
       role="dialog"
       aria-modal="true"
-      aria-label="Share this quote"
+      aria-label="Share quote"
     >
       <div
         ref={cardRef}
         className={`share-dialog${closing ? " is-closing" : ""}`}
       >
-        <div className="context-popover-head">
-          <span className="context-popover-label-wrap">
-            <span className="context-popover-dot" aria-hidden="true" />
-            <span className="context-popover-title">Share passage</span>
-          </span>
+        <div className="dialog-head">
+          <span className="dialog-title">Share quote</span>
 
           <button
             type="button"
-            className="context-popover-close"
+            className="dialog-close"
             onClick={requestClose}
             aria-label="Close share dialog"
           >
@@ -129,7 +126,7 @@ export default function SharePopover({ quote, onClose }: SharePopoverProps) {
 
         <p className="share-excerpt">&ldquo;{excerpt}&rdquo;</p>
         <p className="share-author-line kicker">
-          {quote.author} · {quote.weekLabel}
+          {quote.author} / {quote.weekLabel}
         </p>
 
         <div className="share-actions-grid">

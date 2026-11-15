@@ -5,7 +5,7 @@ A calm commonplace reading room for [fromthecabinet.com](https://fromthecabinet.
 ## Features
 
 - **Singular Quote Stage (`/`):** Displays the current week's quote (or most recent published entry), with **Another thought** to rotate through historical passages, **Copy**, **Share**, and **Library** access.
-- **Commonplace Library (`/library`):** Searchable, hairline-separated archive with quick author filters, a frosted **Authors & years** filter popover, URL query sync (`?q=`, `?author=`, `?year=`), and source context popovers.
+- **Commonplace Library (`/library`):** Searchable, hairline-separated archive with quick author filters, clickable author/source/year filtering, a viewport-clamped **Filters** popover, and URL query sync (`?q=`, `?author=`, `?source=`, `?year=`).
 - **Quote Permalinks (`/quote/[id]`):** Direct canonical pages for sharing individual passages.
 - **From the Cabinet v2.0 Design System:** `Geist Variable` and `Geist Mono Variable` typography, light (Oxblood `#881337`) and dark (Rose `#e57389`) themes with zero-FOUC initialization, circular View Transitions theme reveal, and cursor-tracking frosted tooltips.
 - **Weekly Supabase Keepalive (`/api/cron/keepalive`):** Scheduled via [vercel.json](vercel.json) (`0 9 * * 1`) to run a lightweight query once a week so a free-tier Supabase project does not auto-pause from inactivity.

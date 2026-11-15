@@ -11,10 +11,7 @@ export interface QuoteRow {
 
 let cachedClient: SupabaseClient | null = null;
 
-/**
- * Lazily initializes and returns the Supabase client using SUPABASE_URL and SUPABASE_KEY.
- * Deferring instantiation avoids throwing during build-time module evaluation when env vars are absent.
- */
+
 export function getSupabase(): SupabaseClient {
   if (cachedClient) return cachedClient;
 

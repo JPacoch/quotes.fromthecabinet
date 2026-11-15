@@ -28,7 +28,7 @@ function formatWeekLabel(isoDate: string): string {
   const parsed = new Date(`${isoDate}T00:00:00Z`);
   if (Number.isNaN(parsed.getTime())) return isoDate;
   const week = String(getISOWeekNumber(parsed)).padStart(2, "0");
-  return `Week ${week} · ${parsed.getUTCFullYear()}`;
+  return `Week ${week} / ${parsed.getUTCFullYear()}`;
 }
 
 export function formatTooltipHostPath(rawUrl: string): string {

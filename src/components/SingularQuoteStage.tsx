@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { formatQuoteRow, formatTooltipHostPath, type QuoteItem } from "@/lib/quotes";
 import SharePopover from "@/components/SharePopover";
-import ContextPopover from "@/components/ContextPopover";
 
 interface SingularQuoteStageProps {
   initialQuote: QuoteItem | null;
@@ -23,7 +22,6 @@ export default function SingularQuoteStage({
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [contextAnchor, setContextAnchor] = useState<DOMRect | null>(null);
 
   const copyTimerRef = useRef<number | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
@@ -41,7 +39,6 @@ export default function SingularQuoteStage({
     if (isRotating || !quote) return;
     setIsRotating(true);
     setStatusNotice(null);
-    setContextAnchor(null);
 
     try {
       const res = await fetch(`/api/quote/random?exclude=${encodeURIComponent(quote.id)}`, {
@@ -73,7 +70,6 @@ export default function SingularQuoteStage({
     if (!initialQuote) return;
     setQuote(initialQuote);
     setStatusNotice(null);
-    setContextAnchor(null);
     setCopied(false);
   };
 
@@ -139,7 +135,7 @@ export default function SingularQuoteStage({
             {/* Eyebrow / Dateline */}
             <div className="singular-eyebrow">
               <span className="kicker">
-                {isViewingLatest ? "This Week" : "Archive"} · {quote.weekLabel}
+                {isViewingLatest ? "This Week" : "Archive"} / {quote.weekLabel}
               </span>
 
               {!isViewingLatest && initialQuote && (
@@ -171,31 +167,15 @@ export default function SingularQuoteStage({
               {quote.sourceLabel && (
                 <>
                   <span className="quote-sep" aria-hidden="true">
-                    ·
+                    /
                   </span>
-                  {quote.sourceUrl ? (
-                    <a
-                      href={quote.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="quote-work"
-                      data-tooltip={formatTooltipHostPath(quote.sourceUrl)}
-                    >
-                      {quote.sourceLabel} ↗
-                    </a>
-                  ) : (
-                    <button
-                      type="button"
-                      className="quote-work quote-work-btn"
-                      onClick={(e) =>
-                        setContextAnchor((prev) =>
-                          prev ? null : e.currentTarget.getBoundingClientRect()
-                        )
-                      }
-                    >
-                      {quote.sourceLabel}
-                    </button>
-                  )}
+                  <Link
+                    href={`/library?source=${encodeURIComponent(quote.sourceLabel)}`}
+                    className="source-chip quote-work"
+                    data-tooltip={`Filter library by ${quote.sourceLabel}`}
+                  >
+                    {quote.sourceLabel}
+                  </Link>
                 </>
               )}
             </div>
@@ -220,7 +200,7 @@ export default function SingularQuoteStage({
                   data-tooltip="Browse all collected quotes"
                 >
                   <span>
-                    Library{formattedCount ? ` · ${formattedCount}` : ""}
+                    Library{formattedCount ? ` / ${formattedCount}` : ""}
                   </span>
                 </Link>
               </div>
@@ -245,6 +225,18 @@ export default function SingularQuoteStage({
                   Share
                 </button>
 
+                {quote.sourceUrl && (
+                  <a
+                    href={quote.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="quote-action-link kicker"
+                    data-tooltip={formatTooltipHostPath(quote.sourceUrl)}
+                  >
+                    Source ↗
+                  </a>
+                )}
+
                 <Link
                   href={`/quote/${quote.id}`}
                   className="quote-action-link kicker"
@@ -266,14 +258,6 @@ export default function SingularQuoteStage({
 
       {shareOpen && quote && (
         <SharePopover quote={quote} onClose={() => setShareOpen(false)} />
-      )}
-
-      {contextAnchor && quote && (
-        <ContextPopover
-          quote={quote}
-          anchorRect={contextAnchor}
-          onClose={() => setContextAnchor(null)}
-        />
       )}
     </div>
   );
