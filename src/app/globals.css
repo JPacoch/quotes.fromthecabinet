@@ -362,6 +362,7 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 0.32rem;
+  max-width: 100%;
   background: none;
   border: 0;
   border-bottom: 1px solid transparent;
@@ -370,6 +371,14 @@ button {
   cursor: pointer;
   color: var(--muted);
   transition: color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+
+.authors-toggle-label {
+  display: inline-block;
+  max-width: min(14rem, 48vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .authors-toggle:hover {
@@ -382,6 +391,7 @@ button {
 }
 
 .authors-toggle-chevron {
+  flex-shrink: 0;
   transition: transform 200ms var(--ease-out);
 }
 
@@ -389,11 +399,11 @@ button {
   transform: rotate(180deg);
 }
 
-/* Frosted Filter Popover */
+/* Solid Elevated Filter Popover */
 @keyframes topic-pop-in {
   from {
     opacity: 0;
-    transform: translateY(-4px) scale(0.96);
+    transform: translateY(-4px) scale(0.97);
   }
   to {
     opacity: 1;
@@ -402,18 +412,14 @@ button {
 }
 
 .authors-popover {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.65rem);
-  z-index: 60;
-  width: min(21rem, calc(100vw - 2 * var(--gutter)));
+  position: fixed;
+  z-index: 95;
   border-radius: 13px;
-  background: var(--tooltip-bg);
-  box-shadow: var(--tooltip-shadow);
-  backdrop-filter: blur(22px) saturate(1.8);
-  -webkit-backdrop-filter: blur(22px) saturate(1.8);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-float);
   padding: 0.95rem 1rem 1.05rem;
-  transform-origin: top right;
+  transform-origin: top center;
   animation: topic-pop-in 240ms var(--ease-spring) both;
 }
 
@@ -565,6 +571,20 @@ button {
   color: var(--ink-2);
 }
 
+.source-chip {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.source-chip:hover,
+.source-chip[aria-pressed='true'] {
+  color: var(--accent);
+}
+
 .year-chip {
   background: none;
   border: 0;
@@ -651,8 +671,8 @@ button {
   color: var(--accent-strong);
 }
 
-/* ── Context / Note Frosted Popover (CitationPopover mechanic) ── */
-@keyframes context-pop-in {
+/* ── Dialog Open / Close Animations & Header ── */
+@keyframes dialog-pop-in {
   from {
     opacity: 0;
     transform: translateY(6px) scale(0.94);
@@ -663,7 +683,7 @@ button {
   }
 }
 
-@keyframes context-pop-out {
+@keyframes dialog-pop-out {
   from {
     opacity: 1;
     transform: none;
@@ -674,25 +694,7 @@ button {
   }
 }
 
-.context-popover {
-  position: fixed;
-  z-index: 90;
-  width: min(21.5rem, calc(100vw - 2rem));
-  border-radius: 13px;
-  background: var(--tooltip-bg);
-  box-shadow: var(--tooltip-shadow);
-  backdrop-filter: blur(20px) saturate(1.75);
-  -webkit-backdrop-filter: blur(20px) saturate(1.75);
-  padding: 0.9rem 1rem 1rem;
-  animation: context-pop-in 320ms var(--ease-spring) both;
-}
-
-.context-popover.is-closing {
-  animation: context-pop-out 200ms var(--ease-out) both;
-  pointer-events: none;
-}
-
-.context-popover-head {
+.dialog-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -700,59 +702,27 @@ button {
   margin-bottom: 0.55rem;
 }
 
-.context-popover-label-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-.context-popover-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-tint);
-  flex-shrink: 0;
-}
-
-.context-popover-title {
+.dialog-title {
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--ink);
 }
 
-.context-popover-close {
+.dialog-close {
   background: none;
   border: 0;
   padding: 0.1rem 0.25rem;
   cursor: pointer;
   color: var(--muted);
-  font-size: 1rem;
+  font-size: 1.125rem;
   line-height: 1;
   transition: color var(--dur-1) var(--ease-out);
 }
 
-.context-popover-close:hover {
+.dialog-close:hover {
   color: var(--ink);
-}
-
-.context-popover-body {
-  margin: 0;
-  font-size: var(--text-sm);
-  line-height: 1.55;
-  color: var(--ink-soft);
-}
-
-.context-popover-meta {
-  margin-top: 0.65rem;
-  padding-top: 0.55rem;
-  border-top: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
 }
 
 /* ── Cursor-Tracking Frosted Tooltip (LinkTooltip mechanic) ── */
@@ -941,14 +911,16 @@ button {
   align-items: center;
   justify-content: center;
   padding: var(--gutter);
-  background: rgba(17, 17, 17, 0.22);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(17, 17, 17, 0.52);
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
   animation: share-backdrop-in 220ms var(--ease-out) both;
 }
 
 :root[data-theme='dark'] .share-backdrop {
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(8, 7, 6, 0.76);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
 }
 
 .share-backdrop.is-closing {
@@ -958,16 +930,15 @@ button {
 .share-dialog {
   width: min(24rem, calc(100vw - 2 * var(--gutter)));
   border-radius: 13px;
-  background: var(--tooltip-bg);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-float);
-  backdrop-filter: blur(22px) saturate(1.8);
-  -webkit-backdrop-filter: blur(22px) saturate(1.8);
   padding: 1.05rem 1.15rem 1.2rem;
-  animation: context-pop-in 320ms var(--ease-spring) both;
+  animation: dialog-pop-in 320ms var(--ease-spring) both;
 }
 
 .share-dialog.is-closing {
-  animation: context-pop-out 200ms var(--ease-out) both;
+  animation: dialog-pop-out 200ms var(--ease-out) both;
 }
 
 .share-excerpt {
@@ -1134,8 +1105,6 @@ button {
   }
 
   .authors-popover,
-  .context-popover,
-  .context-popover.is-closing,
   .share-backdrop,
   .share-backdrop.is-closing,
   .share-dialog,

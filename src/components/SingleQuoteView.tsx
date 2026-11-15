@@ -67,7 +67,7 @@ export default function SingleQuoteView({ quote }: SingleQuoteViewProps) {
 
         <article className="enter" style={{ ["--d" as string]: 1 }}>
           <div className="kicker">
-            Commonplace · {quote.weekLabel}
+            Commonplace / {quote.weekLabel}
           </div>
 
           <blockquote className="single-quote-blockquote">{quote.content}</blockquote>
@@ -84,21 +84,15 @@ export default function SingleQuoteView({ quote }: SingleQuoteViewProps) {
               {quote.sourceLabel && (
                 <>
                   <span className="quote-sep" aria-hidden="true">
-                    ·
+                    /
                   </span>
-                  {quote.sourceUrl ? (
-                    <a
-                      href={quote.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="quote-work"
-                      data-tooltip={formatTooltipHostPath(quote.sourceUrl)}
-                    >
-                      {quote.sourceLabel} ↗
-                    </a>
-                  ) : (
-                    <span className="quote-work">{quote.sourceLabel}</span>
-                  )}
+                  <Link
+                    href={`/library?source=${encodeURIComponent(quote.sourceLabel)}`}
+                    className="source-chip quote-work"
+                    data-tooltip={`Filter library by ${quote.sourceLabel}`}
+                  >
+                    {quote.sourceLabel}
+                  </Link>
                 </>
               )}
             </div>

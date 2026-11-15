@@ -4,7 +4,7 @@ export default function Footer() {
       <div className="wrap">
         <div className="col-wide">
           <div className="footer-inner">
-            <p className="footer-copy">© 2026 Jakub Pacocha · fromthecabinet.com</p>
+            <p className="footer-copy">© 2026 Jakub Pacocha / fromthecabinet.com</p>
 
             <nav className="footer-nav" aria-label="Footer">
               <a href="https://fromthecabinet.com/" className="footer-link">
