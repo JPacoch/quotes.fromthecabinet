@@ -364,7 +364,7 @@ export default function QuotesArchive({
 
           <h1 className="page-title">Library</h1>
           <p className="page-lede">
-            Collected passages, aphorisms, and marginalia worth keeping close.
+            Collected passages and aphorisms worth keeping.
           </p>
         </section>
 
