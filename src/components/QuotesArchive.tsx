@@ -341,7 +341,7 @@ export default function QuotesArchive({
         <section className="page-head enter" style={{ ["--d" as string]: 0 }}>
           <div className="page-eyebrow">
             <span className="kicker" aria-live="polite">
-              Commonplace / {formattedCount} {entryNoun}
+              {formattedCount} {entryNoun}
             </span>
 
             <div className="eyebrow-links">
