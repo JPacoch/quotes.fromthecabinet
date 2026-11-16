@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { formatTooltipHostPath, type QuoteItem } from "@/lib/quotes";
+import ScrambleText from "@/components/ScrambleText";
 
 interface SingleQuoteViewProps {
   quote: QuoteItem;
@@ -65,14 +66,16 @@ export default function SingleQuoteView({ quote }: SingleQuoteViewProps) {
           </Link>
         </div>
 
-        <article className="enter" style={{ ["--d" as string]: 1 }}>
-          <div className="kicker">
-            Commonplace / {quote.weekLabel}
+        <article>
+          <div className="kicker enter" style={{ ["--d" as string]: 1 }}>
+           {quote.weekLabel}
           </div>
 
-          <blockquote className="single-quote-blockquote">{quote.content}</blockquote>
+          <blockquote className="single-quote-blockquote enter" style={{ ["--d" as string]: 2 }}>
+            <ScrambleText text={quote.content} triggerKey={quote.id} />
+          </blockquote>
 
-          <div className="single-quote-footer">
+          <div className="single-quote-footer enter" style={{ ["--d" as string]: 3 }}>
             <div className="quote-attribution">
               <Link
                 href={`/library?author=${encodeURIComponent(quote.author)}`}
