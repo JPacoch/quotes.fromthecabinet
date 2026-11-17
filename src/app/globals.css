@@ -764,7 +764,7 @@ button {
 }
 
 .singular-article {
-  transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
 }
 
 .singular-article.is-exiting {
@@ -775,41 +775,6 @@ button {
 
 .singular-article .enter {
   animation-delay: calc(var(--d, 0) * 115ms);
-}
-
-.stage-loader {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  max-width: 18rem;
-  padding-block: 3.5rem;
-  animation: fade-up 240ms var(--ease-out) both;
-}
-
-.stage-loader-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.stage-loader-pct {
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-}
-
-.stage-loader-track {
-  width: 100%;
-  height: 1px;
-  background: var(--line-strong);
-  position: relative;
-  overflow: hidden;
-}
-
-.stage-loader-fill {
-  height: 100%;
-  background: var(--accent);
-  transition: width 90ms linear;
 }
 
 .singular-eyebrow {
@@ -1142,7 +1107,6 @@ button {
   }
 
   .authors-popover,
-  .stage-loader,
   .share-backdrop,
   .share-backdrop.is-closing,
   .share-dialog,
@@ -1151,7 +1115,6 @@ button {
   }
 
   .singular-article,
-  .stage-loader-fill,
   .theme-toggle-icon,
   .authors-toggle-chevron {
     transition: none;

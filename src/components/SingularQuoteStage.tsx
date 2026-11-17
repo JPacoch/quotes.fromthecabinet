@@ -12,10 +12,7 @@ interface SingularQuoteStageProps {
   initialError: string | null;
 }
 
-type StagePhase = "visible" | "exiting" | "loading";
-
-const EXIT_DURATION_MS = 240;
-const LOADER_MIN_MS = 780;
+const EXIT_DURATION_MS = 220;
 
 export default function SingularQuoteStage({
   initialQuote,
@@ -24,9 +21,8 @@ export default function SingularQuoteStage({
 }: SingularQuoteStageProps) {
   const [quote, setQuote] = useState<QuoteItem | null>(initialQuote);
   const [error, setError] = useState<string | null>(initialError);
-  const [phase, setPhase] = useState<StagePhase>("visible");
-  const [loaderLabel, setLoaderLabel] = useState("Turning page");
-  const [loaderProgress, setLoaderProgress] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const [revealSeq, setRevealSeq] = useState(0);
 
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
@@ -36,137 +32,74 @@ export default function SingularQuoteStage({
   const copyTimerRef = useRef<number | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
   const transitionRunRef = useRef(0);
-  const loaderRafRef = useRef<number | null>(null);
-  const exitTimerRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-
-  const clearTransitionTimers = () => {
-    if (loaderRafRef.current !== null) {
-      cancelAnimationFrame(loaderRafRef.current);
-      loaderRafRef.current = null;
-    }
-    if (exitTimerRef.current !== null) {
-      window.clearTimeout(exitTimerRef.current);
-      exitTimerRef.current = null;
-    }
-    if (abortRef.current) {
-      abortRef.current.abort();
-      abortRef.current = null;
-    }
-  };
 
   useEffect(() => {
     return () => {
-      clearTransitionTimers();
+      abortRef.current?.abort();
       if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
       if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current);
     };
   }, []);
 
   const isViewingLatest = Boolean(initialQuote && quote && quote.id === initialQuote.id);
-  const isBusy = phase !== "visible";
 
-  const runLoaderSequence = (
-    label: string,
+  const transitionQuote = async (
     loadTask: (signal: AbortSignal) => Promise<{ nextQuote: QuoteItem | null; notice?: string }>
   ) => {
-    clearTransitionTimers();
-    const runId = ++transitionRunRef.current;
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (isTransitioning) return;
 
-    setStatusNotice(null);
-    setShareOpen(false);
-    setLoaderLabel(label);
-    setLoaderProgress(0);
-
+    abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    const fetchPromise = loadTask(controller.signal);
+    const runId = ++transitionRunRef.current;
 
-    const startLoadingPhase = () => {
-      if (transitionRunRef.current !== runId) return;
-      setPhase("loading");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setIsTransitioning(true);
+    setStatusNotice(null);
+    setShareOpen(false);
 
-      const loadStart = performance.now();
-      const minWait = reducedMotion ? 0 : LOADER_MIN_MS;
-
-      if (!reducedMotion) {
-        const tickProgress = (now: number) => {
-          if (transitionRunRef.current !== runId) return;
-          const t = Math.min((now - loadStart) / LOADER_MIN_MS, 1);
-          const eased = 1 - Math.pow(1 - t, 3);
-          setLoaderProgress(eased * 96);
-          if (t < 1) {
-            loaderRafRef.current = requestAnimationFrame(tickProgress);
-          }
-        };
-        loaderRafRef.current = requestAnimationFrame(tickProgress);
-      }
-
-      const waitMinPromise = new Promise<void>((resolve) => {
-        if (minWait === 0) {
-          resolve();
-          return;
-        }
-        window.setTimeout(resolve, minWait);
-      });
-
-      Promise.all([fetchPromise, waitMinPromise])
-        .then(([result]) => {
-          if (transitionRunRef.current !== runId) return;
-
-          if (loaderRafRef.current !== null) {
-            cancelAnimationFrame(loaderRafRef.current);
-            loaderRafRef.current = null;
-          }
-          setLoaderProgress(100);
-
-          const finishSwap = () => {
-            if (transitionRunRef.current !== runId) return;
-            if (result.nextQuote) {
-              setQuote(result.nextQuote);
-              setError(null);
-              setCopied(false);
-              setRevealSeq((s) => s + 1);
-            }
-            if (result.notice) {
-              setStatusNotice(result.notice);
-              if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current);
-              noticeTimerRef.current = window.setTimeout(() => setStatusNotice(null), 2600);
-            }
-            setPhase("visible");
-          };
-
-          if (reducedMotion) {
-            finishSwap();
-          } else {
-            window.setTimeout(finishSwap, 110);
-          }
-        })
-        .catch((err) => {
-          if (transitionRunRef.current !== runId) return;
-          if (err instanceof DOMException && err.name === "AbortError") return;
-          setStatusNotice(
-            err instanceof Error ? err.message : "Could not load passage."
-          );
-          setPhase("visible");
-        });
-    };
-
-    if (reducedMotion || !quote) {
-      startLoadingPhase();
-      return;
+    if (!reducedMotion && quote) {
+      setIsExiting(true);
     }
 
-    setPhase("exiting");
-    exitTimerRef.current = window.setTimeout(startLoadingPhase, EXIT_DURATION_MS);
+    const exitWait =
+      reducedMotion || !quote
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => window.setTimeout(resolve, EXIT_DURATION_MS));
+
+    try {
+      const [result] = await Promise.all([loadTask(controller.signal), exitWait]);
+      if (transitionRunRef.current !== runId) return;
+
+      if (result.nextQuote) {
+        setQuote(result.nextQuote);
+        setError(null);
+        setCopied(false);
+        setRevealSeq((s) => s + 1);
+      }
+      if (result.notice) {
+        setStatusNotice(result.notice);
+        if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current);
+        noticeTimerRef.current = window.setTimeout(() => setStatusNotice(null), 2600);
+      }
+    } catch (err) {
+      if (transitionRunRef.current !== runId) return;
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      setStatusNotice(err instanceof Error ? err.message : "Could not load passage.");
+    } finally {
+      if (transitionRunRef.current === runId) {
+        setIsExiting(false);
+        setIsTransitioning(false);
+      }
+    }
   };
 
   const handleNextQuote = () => {
-    if (isBusy || !quote) return;
+    if (isTransitioning || !quote) return;
     const currentId = quote.id;
 
-    runLoaderSequence("Turning page", async (signal) => {
+    void transitionQuote(async (signal) => {
       const res = await fetch(
         `/api/quote/random?exclude=${encodeURIComponent(currentId)}`,
         { cache: "no-store", signal }
@@ -189,15 +122,15 @@ export default function SingularQuoteStage({
   };
 
   const handleResetToLatest = () => {
-    if (isBusy || !initialQuote) return;
-    runLoaderSequence("Returning to latest", async () => ({
+    if (isTransitioning || !initialQuote) return;
+    void transitionQuote(async () => ({
       nextQuote: initialQuote,
     }));
   };
 
   const handleRetryToday = () => {
-    if (isBusy) return;
-    runLoaderSequence("Retrieving passage", async (signal) => {
+    if (isTransitioning) return;
+    void transitionQuote(async (signal) => {
       const res = await fetch("/api/quote/today", { cache: "no-store", signal });
       if (!res.ok) throw new Error("No quote available right now.");
       const row = await res.json();
@@ -229,25 +162,11 @@ export default function SingularQuoteStage({
 
   const formattedCount =
     totalCount > 0 ? String(totalCount).padStart(2, "0") : null;
-  const formattedProgress = String(Math.round(loaderProgress)).padStart(2, "0");
 
   return (
     <div className="wrap singular-wrap">
       <div className="col-prose singular-stage">
-        {phase === "loading" ? (
-          <div className="stage-loader" role="status" aria-live="polite">
-            <div className="stage-loader-head">
-              <span className="kicker">{loaderLabel}</span>
-              <span className="kicker stage-loader-pct">{formattedProgress}%</span>
-            </div>
-            <div className="stage-loader-track" aria-hidden="true">
-              <div
-                className="stage-loader-fill"
-                style={{ width: `${loaderProgress}%` }}
-              />
-            </div>
-          </div>
-        ) : !quote ? (
+        {!quote ? (
           <div className="empty-state enter" style={{ ["--d" as string]: 0 }}>
             <p className="empty-state-text">
               {error ? "Unable to load today's passage." : "No quotes available yet."}
@@ -256,7 +175,7 @@ export default function SingularQuoteStage({
               type="button"
               className="reset-btn"
               onClick={handleRetryToday}
-              disabled={isBusy}
+              disabled={isTransitioning}
             >
               Try again
             </button>
@@ -264,7 +183,7 @@ export default function SingularQuoteStage({
         ) : (
           <article
             key={`${quote.id}-${revealSeq}`}
-            className={`singular-article${phase === "exiting" ? " is-exiting" : ""}`}
+            className={`singular-article${isExiting ? " is-exiting" : ""}`}
           >
             {/* Eyebrow / Dateline */}
             <div className="singular-eyebrow enter" style={{ ["--d" as string]: 0 }}>
@@ -277,7 +196,7 @@ export default function SingularQuoteStage({
                   type="button"
                   className="quote-action-btn kicker singular-latest-btn"
                   onClick={handleResetToLatest}
-                  disabled={isBusy}
+                  disabled={isTransitioning}
                 >
                   Back to latest
                 </button>
@@ -331,7 +250,7 @@ export default function SingularQuoteStage({
                   type="button"
                   className="stage-btn stage-btn--primary"
                   onClick={handleNextQuote}
-                  disabled={isBusy}
+                  disabled={isTransitioning}
                   aria-label="Show another historical quote"
                 >
                   <span>Another thought</span>
