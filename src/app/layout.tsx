@@ -1,31 +1,67 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import LinkTooltip from "@/components/LinkTooltip";
+import {
+  AUTHOR_NAME,
+  PARENT_SITE_URL,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_URL,
+  absoluteUrl,
+} from "@/lib/site";
 import "./globals.css";
 
-const SITE_URL = "https://quotes.fromthecabinet.com";
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#171614" },
+  ],
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  applicationName: SITE_NAME,
   title: {
-    default: "Quotes - From the Cabinet",
-    template: "%s — From the Cabinet",
+    default: SITE_NAME,
+    template: "%s - From the Cabinet",
   },
-  description:
-    "Collected passages and aphorisms worth keeping.",
-  alternates: {
-    canonical: "/",
-  },
+  description: SITE_DESCRIPTION,
+  authors: [{ name: AUTHOR_NAME, url: PARENT_SITE_URL }],
+  creator: AUTHOR_NAME,
+  publisher: AUTHOR_NAME,
+  referrer: "origin-when-cross-origin",
   openGraph: {
-    title: "Quotes - From the Cabinet",
-    description:
-      "Collected passages and aphorisms worth keeping.",
-    url: SITE_URL,
-    siteName: "From the Cabinet",
     type: "website",
+    locale: "en_US",
+    siteName: "From the Cabinet",
+    url: SITE_URL,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    images: [
+      {
+        url: absoluteUrl("/opengraph-image"),
+        width: 1200,
+        height: 630,
+        alt: SITE_NAME,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    images: [absoluteUrl("/opengraph-image")],
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 

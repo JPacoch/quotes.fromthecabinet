@@ -748,68 +748,41 @@ button {
   will-change: transform, opacity;
 }
 
+/* ── Twitch-Free Scramble Text Reserve ── */
+.scramble-wrap {
+  display: grid;
+}
+
+.scramble-wrap::before {
+  content: attr(data-text);
+  grid-area: 1 / 1;
+  visibility: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.scramble-live {
+  grid-area: 1 / 1;
+}
+
 /* ── Singular Quote Reading Stage (Home) ── */
 .site-main--stage {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .singular-wrap {
-  padding-block: clamp(2.5rem, 8vh, 5.5rem);
+  padding-top: clamp(3.5rem, 12vh, 8.5rem);
+  padding-bottom: clamp(2.5rem, 6vh, 4.5rem);
 }
 
 .singular-stage {
   width: 100%;
 }
 
-.singular-article {
-  transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
-}
-
-.singular-article.is-exiting {
-  opacity: 0;
-  transform: translateY(-6px);
-  pointer-events: none;
-}
-
 .singular-article .enter {
   animation-delay: calc(var(--d, 0) * 115ms);
-}
-
-.stage-loader {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  max-width: 18rem;
-  padding-block: 3.5rem;
-  animation: fade-up 240ms var(--ease-out) both;
-}
-
-.stage-loader-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.stage-loader-pct {
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-}
-
-.stage-loader-track {
-  width: 100%;
-  height: 1px;
-  background: var(--line-strong);
-  position: relative;
-  overflow: hidden;
-}
-
-.stage-loader-fill {
-  height: 100%;
-  background: var(--accent);
-  transition: width 90ms linear;
 }
 
 .singular-eyebrow {
@@ -824,8 +797,19 @@ button {
   color: var(--accent);
 }
 
+.singular-quote-slot {
+  overflow: hidden;
+  will-change: height;
+}
+
+.singular-quote-inner {
+  padding-top: 1.35rem;
+  padding-bottom: 0.35rem;
+}
+
 .singular-blockquote {
-  margin: 1.35rem 0 0;
+  margin: 0;
+  min-height: 4.3em;
   padding-left: clamp(1rem, 2.5vw, 1.45rem);
   border-left: 2px solid var(--ink);
   font-family: var(--font-sans);
@@ -845,8 +829,21 @@ button {
   gap: 0.45rem;
 }
 
+@keyframes text-swap-in {
+  from {
+    opacity: 0.28;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.text-swap-in {
+  animation: text-swap-in 380ms var(--ease-out) both;
+}
+
 .singular-controls {
-  margin-top: clamp(2rem, 4.5vw, 2.75rem);
+  margin-top: clamp(1.65rem, 4vw, 2.4rem);
   padding-top: 1.25rem;
   border-top: 1px solid var(--line);
   display: flex;
@@ -1131,7 +1128,8 @@ button {
 
 /* ── Reduced Motion ── */
 @media (prefers-reduced-motion: reduce) {
-  .enter {
+  .enter,
+  .text-swap-in {
     animation: none;
   }
 
@@ -1142,7 +1140,6 @@ button {
   }
 
   .authors-popover,
-  .stage-loader,
   .share-backdrop,
   .share-backdrop.is-closing,
   .share-dialog,
@@ -1150,8 +1147,7 @@ button {
     animation: none;
   }
 
-  .singular-article,
-  .stage-loader-fill,
+  .singular-quote-slot,
   .theme-toggle-icon,
   .authors-toggle-chevron {
     transition: none;

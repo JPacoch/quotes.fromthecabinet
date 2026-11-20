@@ -104,7 +104,7 @@ export default function SingleQuoteView({ quote }: SingleQuoteViewProps) {
               <button
                 type="button"
                 className={`quote-action-btn kicker${copiedQuote ? " is-copied" : ""}`}
-                onClick={() => copyText(`"${quote.content}" — ${quote.author}`, "quote")}
+                onClick={() => copyText(`"${quote.content}" - ${quote.author}`, "quote")}
                 data-tooltip={copiedQuote ? "Copied" : "Click to copy"}
               >
                 {copiedQuote ? "Copied ✓" : "Copy"}

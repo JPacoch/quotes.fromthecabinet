@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { formatQuoteRow, formatTooltipHostPath, type QuoteItem } from "@/lib/quotes";
 import SharePopover from "@/components/SharePopover";
@@ -12,10 +12,8 @@ interface SingularQuoteStageProps {
   initialError: string | null;
 }
 
-type StagePhase = "visible" | "exiting" | "loading";
-
-const EXIT_DURATION_MS = 240;
-const LOADER_MIN_MS = 780;
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 export default function SingularQuoteStage({
   initialQuote,
@@ -24,149 +22,150 @@ export default function SingularQuoteStage({
 }: SingularQuoteStageProps) {
   const [quote, setQuote] = useState<QuoteItem | null>(initialQuote);
   const [error, setError] = useState<string | null>(initialError);
-  const [phase, setPhase] = useState<StagePhase>("visible");
-  const [loaderLabel, setLoaderLabel] = useState("Turning page");
-  const [loaderProgress, setLoaderProgress] = useState(0);
+  const [isFetching, setIsFetching] = useState(false);
   const [revealSeq, setRevealSeq] = useState(0);
 
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
+  const slotRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const prevHeightRef = useRef<number | null>(null);
+  const heightTimerRef = useRef<number | null>(null);
+
   const copyTimerRef = useRef<number | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
   const transitionRunRef = useRef(0);
-  const loaderRafRef = useRef<number | null>(null);
-  const exitTimerRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-
-  const clearTransitionTimers = () => {
-    if (loaderRafRef.current !== null) {
-      cancelAnimationFrame(loaderRafRef.current);
-      loaderRafRef.current = null;
-    }
-    if (exitTimerRef.current !== null) {
-      window.clearTimeout(exitTimerRef.current);
-      exitTimerRef.current = null;
-    }
-    if (abortRef.current) {
-      abortRef.current.abort();
-      abortRef.current = null;
-    }
-  };
 
   useEffect(() => {
     return () => {
-      clearTransitionTimers();
+      abortRef.current?.abort();
       if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
       if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current);
+      if (heightTimerRef.current !== null) window.clearTimeout(heightTimerRef.current);
     };
   }, []);
 
-  const isViewingLatest = Boolean(initialQuote && quote && quote.id === initialQuote.id);
-  const isBusy = phase !== "visible";
+  // Smoothly interpolate slot height whenever a new quote has a different line count
+  useIsomorphicLayoutEffect(() => {
+    const slot = slotRef.current;
+    const inner = innerRef.current;
+    const prevHeight = prevHeightRef.current;
+    prevHeightRef.current = null;
 
-  const runLoaderSequence = (
-    label: string,
-    loadTask: (signal: AbortSignal) => Promise<{ nextQuote: QuoteItem | null; notice?: string }>
-  ) => {
-    clearTransitionTimers();
-    const runId = ++transitionRunRef.current;
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!slot || !inner || prevHeight === null) return;
 
-    setStatusNotice(null);
-    setShareOpen(false);
-    setLoaderLabel(label);
-    setLoaderProgress(0);
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const fetchPromise = loadTask(controller.signal);
-
-    const startLoadingPhase = () => {
-      if (transitionRunRef.current !== runId) return;
-      setPhase("loading");
-
-      const loadStart = performance.now();
-      const minWait = reducedMotion ? 0 : LOADER_MIN_MS;
-
-      if (!reducedMotion) {
-        const tickProgress = (now: number) => {
-          if (transitionRunRef.current !== runId) return;
-          const t = Math.min((now - loadStart) / LOADER_MIN_MS, 1);
-          const eased = 1 - Math.pow(1 - t, 3);
-          setLoaderProgress(eased * 96);
-          if (t < 1) {
-            loaderRafRef.current = requestAnimationFrame(tickProgress);
-          }
-        };
-        loaderRafRef.current = requestAnimationFrame(tickProgress);
-      }
-
-      const waitMinPromise = new Promise<void>((resolve) => {
-        if (minWait === 0) {
-          resolve();
-          return;
-        }
-        window.setTimeout(resolve, minWait);
-      });
-
-      Promise.all([fetchPromise, waitMinPromise])
-        .then(([result]) => {
-          if (transitionRunRef.current !== runId) return;
-
-          if (loaderRafRef.current !== null) {
-            cancelAnimationFrame(loaderRafRef.current);
-            loaderRafRef.current = null;
-          }
-          setLoaderProgress(100);
-
-          const finishSwap = () => {
-            if (transitionRunRef.current !== runId) return;
-            if (result.nextQuote) {
-              setQuote(result.nextQuote);
-              setError(null);
-              setCopied(false);
-              setRevealSeq((s) => s + 1);
-            }
-            if (result.notice) {
-              setStatusNotice(result.notice);
-              if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current);
-              noticeTimerRef.current = window.setTimeout(() => setStatusNotice(null), 2600);
-            }
-            setPhase("visible");
-          };
-
-          if (reducedMotion) {
-            finishSwap();
-          } else {
-            window.setTimeout(finishSwap, 110);
-          }
-        })
-        .catch((err) => {
-          if (transitionRunRef.current !== runId) return;
-          if (err instanceof DOMException && err.name === "AbortError") return;
-          setStatusNotice(
-            err instanceof Error ? err.message : "Could not load passage."
-          );
-          setPhase("visible");
-        });
-    };
-
-    if (reducedMotion || !quote) {
-      startLoadingPhase();
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      slot.style.height = "";
+      slot.style.transition = "";
       return;
     }
 
-    setPhase("exiting");
-    exitTimerRef.current = window.setTimeout(startLoadingPhase, EXIT_DURATION_MS);
+    if (heightTimerRef.current !== null) {
+      window.clearTimeout(heightTimerRef.current);
+      heightTimerRef.current = null;
+    }
+
+    // Measure natural height of new content before locking
+    slot.style.transition = "none";
+    slot.style.height = "auto";
+    const nextHeight = inner.getBoundingClientRect().height;
+
+    if (Math.abs(nextHeight - prevHeight) < 1) {
+      slot.style.height = "";
+      slot.style.transition = "";
+      return;
+    }
+
+    // Lock at previous height, force reflow, then glide to target height
+    slot.style.height = `${prevHeight}px`;
+    void slot.offsetHeight;
+    slot.style.transition = "height 460ms var(--ease-out)";
+    slot.style.height = `${nextHeight}px`;
+
+    const releaseHeight = () => {
+      slot.style.height = "";
+      slot.style.transition = "";
+      if (heightTimerRef.current !== null) {
+        window.clearTimeout(heightTimerRef.current);
+        heightTimerRef.current = null;
+      }
+    };
+
+    const onEnd = (e: TransitionEvent) => {
+      if (e.target === slot && e.propertyName === "height") {
+        slot.removeEventListener("transitionend", onEnd);
+        releaseHeight();
+      }
+    };
+
+    slot.addEventListener("transitionend", onEnd);
+    heightTimerRef.current = window.setTimeout(() => {
+      slot.removeEventListener("transitionend", onEnd);
+      releaseHeight();
+    }, 520);
+
+    return () => {
+      slot.removeEventListener("transitionend", onEnd);
+    };
+  }, [quote?.id, revealSeq]);
+
+  const isViewingLatest = Boolean(initialQuote && quote && quote.id === initialQuote.id);
+
+  const applyNextQuote = (nextQuote: QuoteItem) => {
+    if (slotRef.current) {
+      prevHeightRef.current = slotRef.current.getBoundingClientRect().height;
+    }
+    setQuote(nextQuote);
+    setError(null);
+    setCopied(false);
+    setRevealSeq((s) => s + 1);
+  };
+
+  const loadQuote = async (
+    loadTask: (signal: AbortSignal) => Promise<{ nextQuote: QuoteItem | null; notice?: string }>
+  ) => {
+    if (isFetching) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const runId = ++transitionRunRef.current;
+
+    setIsFetching(true);
+    setStatusNotice(null);
+    setShareOpen(false);
+
+    try {
+      const result = await loadTask(controller.signal);
+      if (transitionRunRef.current !== runId) return;
+
+      if (result.nextQuote) {
+        applyNextQuote(result.nextQuote);
+      }
+      if (result.notice) {
+        setStatusNotice(result.notice);
+        if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current);
+        noticeTimerRef.current = window.setTimeout(() => setStatusNotice(null), 2600);
+      }
+    } catch (err) {
+      if (transitionRunRef.current !== runId) return;
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      setStatusNotice(err instanceof Error ? err.message : "Could not load passage.");
+    } finally {
+      if (transitionRunRef.current === runId) {
+        setIsFetching(false);
+      }
+    }
   };
 
   const handleNextQuote = () => {
-    if (isBusy || !quote) return;
+    if (isFetching || !quote) return;
     const currentId = quote.id;
 
-    runLoaderSequence("Turning page", async (signal) => {
+    void loadQuote(async (signal) => {
       const res = await fetch(
         `/api/quote/random?exclude=${encodeURIComponent(currentId)}`,
         { cache: "no-store", signal }
@@ -189,15 +188,15 @@ export default function SingularQuoteStage({
   };
 
   const handleResetToLatest = () => {
-    if (isBusy || !initialQuote) return;
-    runLoaderSequence("Returning to latest", async () => ({
-      nextQuote: initialQuote,
-    }));
+    if (isFetching || !initialQuote) return;
+    setStatusNotice(null);
+    setShareOpen(false);
+    applyNextQuote(initialQuote);
   };
 
   const handleRetryToday = () => {
-    if (isBusy) return;
-    runLoaderSequence("Retrieving passage", async (signal) => {
+    if (isFetching) return;
+    void loadQuote(async (signal) => {
       const res = await fetch("/api/quote/today", { cache: "no-store", signal });
       if (!res.ok) throw new Error("No quote available right now.");
       const row = await res.json();
@@ -207,7 +206,7 @@ export default function SingularQuoteStage({
 
   const handleCopy = async () => {
     if (!quote) return;
-    const text = `"${quote.content}" — ${quote.author}`;
+    const text = `"${quote.content}" - ${quote.author}`;
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -229,25 +228,11 @@ export default function SingularQuoteStage({
 
   const formattedCount =
     totalCount > 0 ? String(totalCount).padStart(2, "0") : null;
-  const formattedProgress = String(Math.round(loaderProgress)).padStart(2, "0");
 
   return (
     <div className="wrap singular-wrap">
       <div className="col-prose singular-stage">
-        {phase === "loading" ? (
-          <div className="stage-loader" role="status" aria-live="polite">
-            <div className="stage-loader-head">
-              <span className="kicker">{loaderLabel}</span>
-              <span className="kicker stage-loader-pct">{formattedProgress}%</span>
-            </div>
-            <div className="stage-loader-track" aria-hidden="true">
-              <div
-                className="stage-loader-fill"
-                style={{ width: `${loaderProgress}%` }}
-              />
-            </div>
-          </div>
-        ) : !quote ? (
+        {!quote ? (
           <div className="empty-state enter" style={{ ["--d" as string]: 0 }}>
             <p className="empty-state-text">
               {error ? "Unable to load today's passage." : "No quotes available yet."}
@@ -256,19 +241,19 @@ export default function SingularQuoteStage({
               type="button"
               className="reset-btn"
               onClick={handleRetryToday}
-              disabled={isBusy}
+              disabled={isFetching}
             >
               Try again
             </button>
           </div>
         ) : (
-          <article
-            key={`${quote.id}-${revealSeq}`}
-            className={`singular-article${phase === "exiting" ? " is-exiting" : ""}`}
-          >
+          <article className="singular-article">
             {/* Eyebrow / Dateline */}
             <div className="singular-eyebrow enter" style={{ ["--d" as string]: 0 }}>
-              <span className="kicker">
+              <span
+                key={`eyebrow-${quote.id}-${revealSeq}`}
+                className={revealSeq > 0 ? "kicker text-swap-in" : "kicker"}
+              >
                 {isViewingLatest ? "This Week" : "Archive"} / {quote.weekLabel}
               </span>
 
@@ -277,61 +262,70 @@ export default function SingularQuoteStage({
                   type="button"
                   className="quote-action-btn kicker singular-latest-btn"
                   onClick={handleResetToLatest}
-                  disabled={isBusy}
+                  disabled={isFetching}
                 >
                   Back to latest
                 </button>
               )}
             </div>
 
-            {/* Passage with left-to-right letter scramble resolve */}
-            <blockquote
-              className="singular-blockquote enter"
-              style={{ ["--d" as string]: 1 }}
-            >
-              <ScrambleText
-                text={quote.content}
-                triggerKey={`${quote.id}-${revealSeq}`}
-              />
-            </blockquote>
+            {/* Smoothly height-interpolated quote & attribution region */}
+            <div ref={slotRef} className="singular-quote-slot">
+              <div ref={innerRef} className="singular-quote-inner">
+                <blockquote
+                  className="singular-blockquote enter"
+                  style={{ ["--d" as string]: 1 }}
+                >
+                  <ScrambleText
+                    text={quote.content}
+                    triggerKey={`${quote.id}-${revealSeq}`}
+                  />
+                </blockquote>
 
-            {/* Attribution */}
-            <div
-              className="singular-attribution enter"
-              style={{ ["--d" as string]: 2 }}
-            >
-              <Link
-                href={`/library?author=${encodeURIComponent(quote.author)}`}
-                className="author-chip"
-                data-tooltip={`Filter library by ${quote.author}`}
-              >
-                {quote.author}
-              </Link>
-
-              {quote.sourceLabel && (
-                <>
-                  <span className="quote-sep" aria-hidden="true">
-                    /
-                  </span>
+                <div
+                  key={`attr-${quote.id}-${revealSeq}`}
+                  className={
+                    revealSeq > 0
+                      ? "singular-attribution text-swap-in"
+                      : "singular-attribution enter"
+                  }
+                  style={revealSeq === 0 ? { ["--d" as string]: 2 } : undefined}
+                >
                   <Link
-                    href={`/library?source=${encodeURIComponent(quote.sourceLabel)}`}
-                    className="source-chip quote-work"
-                    data-tooltip={`Filter library by ${quote.sourceLabel}`}
+                    href={`/library?author=${encodeURIComponent(quote.author)}`}
+                    className="author-chip"
+                    data-tooltip={`Filter library by ${quote.author}`}
                   >
-                    {quote.sourceLabel}
+                    {quote.author}
                   </Link>
-                </>
-              )}
+
+                  {quote.sourceLabel && (
+                    <>
+                      <span className="quote-sep" aria-hidden="true">
+                        /
+                      </span>
+                      <Link
+                        href={`/library?source=${encodeURIComponent(quote.sourceLabel)}`}
+                        className="source-chip quote-work"
+                        data-tooltip={`Filter library by ${quote.sourceLabel}`}
+                      >
+                        {quote.sourceLabel}
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Quiet Action Bar */}
+            {/* Stationary Action Bar */}
             <div className="singular-controls enter" style={{ ["--d" as string]: 3 }}>
               <div className="singular-primary-actions">
                 <button
                   type="button"
                   className="stage-btn stage-btn--primary"
                   onClick={handleNextQuote}
-                  disabled={isBusy}
+                  disabled={isFetching}
+                  aria-busy={isFetching}
                   aria-label="Show another historical quote"
                 >
                   <span>Another thought</span>
