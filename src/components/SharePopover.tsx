@@ -47,7 +47,7 @@ export default function SharePopover({ quote, onClose }: SharePopoverProps) {
       ? window.location.origin
       : "https://quotes.fromthecabinet.com";
   const permalink = `${origin}/quote/${quote.id}`;
-  const shareText = `"${quote.content}" — ${quote.author}`;
+  const shareText = `"${quote.content}" - ${quote.author}`;
   const encodedText = encodeURIComponent(shareText);
   const encodedUrl = encodeURIComponent(permalink);
 

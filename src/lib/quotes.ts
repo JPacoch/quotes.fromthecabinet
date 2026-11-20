@@ -87,7 +87,7 @@ interface QuotesFetchResult {
 }
 
 /**
- * Fetches today's quote (exact publish_date match, or most recent quote with publish_date <= today).
+ * Fetches today's quote (exact publish_date match or most recent quote with publish_date <= today).
  */
 export async function fetchTodayQuote(): Promise<{
   quote: QuoteItem | null;

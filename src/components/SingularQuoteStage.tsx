@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { formatQuoteRow, formatTooltipHostPath, type QuoteItem } from "@/lib/quotes";
 import SharePopover from "@/components/SharePopover";
@@ -12,7 +12,8 @@ interface SingularQuoteStageProps {
   initialError: string | null;
 }
 
-const EXIT_DURATION_MS = 220;
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 export default function SingularQuoteStage({
   initialQuote,
@@ -21,13 +22,17 @@ export default function SingularQuoteStage({
 }: SingularQuoteStageProps) {
   const [quote, setQuote] = useState<QuoteItem | null>(initialQuote);
   const [error, setError] = useState<string | null>(initialError);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [isExiting, setIsExiting] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const [revealSeq, setRevealSeq] = useState(0);
 
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+
+  const slotRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const prevHeightRef = useRef<number | null>(null);
+  const heightTimerRef = useRef<number | null>(null);
 
   const copyTimerRef = useRef<number | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
@@ -39,44 +44,106 @@ export default function SingularQuoteStage({
       abortRef.current?.abort();
       if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
       if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current);
+      if (heightTimerRef.current !== null) window.clearTimeout(heightTimerRef.current);
     };
   }, []);
 
+  // Smoothly interpolate slot height whenever a new quote has a different line count
+  useIsomorphicLayoutEffect(() => {
+    const slot = slotRef.current;
+    const inner = innerRef.current;
+    const prevHeight = prevHeightRef.current;
+    prevHeightRef.current = null;
+
+    if (!slot || !inner || prevHeight === null) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      slot.style.height = "";
+      slot.style.transition = "";
+      return;
+    }
+
+    if (heightTimerRef.current !== null) {
+      window.clearTimeout(heightTimerRef.current);
+      heightTimerRef.current = null;
+    }
+
+    // Measure natural height of new content before locking
+    slot.style.transition = "none";
+    slot.style.height = "auto";
+    const nextHeight = inner.getBoundingClientRect().height;
+
+    if (Math.abs(nextHeight - prevHeight) < 1) {
+      slot.style.height = "";
+      slot.style.transition = "";
+      return;
+    }
+
+    // Lock at previous height, force reflow, then glide to target height
+    slot.style.height = `${prevHeight}px`;
+    void slot.offsetHeight;
+    slot.style.transition = "height 460ms var(--ease-out)";
+    slot.style.height = `${nextHeight}px`;
+
+    const releaseHeight = () => {
+      slot.style.height = "";
+      slot.style.transition = "";
+      if (heightTimerRef.current !== null) {
+        window.clearTimeout(heightTimerRef.current);
+        heightTimerRef.current = null;
+      }
+    };
+
+    const onEnd = (e: TransitionEvent) => {
+      if (e.target === slot && e.propertyName === "height") {
+        slot.removeEventListener("transitionend", onEnd);
+        releaseHeight();
+      }
+    };
+
+    slot.addEventListener("transitionend", onEnd);
+    heightTimerRef.current = window.setTimeout(() => {
+      slot.removeEventListener("transitionend", onEnd);
+      releaseHeight();
+    }, 520);
+
+    return () => {
+      slot.removeEventListener("transitionend", onEnd);
+    };
+  }, [quote?.id, revealSeq]);
+
   const isViewingLatest = Boolean(initialQuote && quote && quote.id === initialQuote.id);
 
-  const transitionQuote = async (
+  const applyNextQuote = (nextQuote: QuoteItem) => {
+    if (slotRef.current) {
+      prevHeightRef.current = slotRef.current.getBoundingClientRect().height;
+    }
+    setQuote(nextQuote);
+    setError(null);
+    setCopied(false);
+    setRevealSeq((s) => s + 1);
+  };
+
+  const loadQuote = async (
     loadTask: (signal: AbortSignal) => Promise<{ nextQuote: QuoteItem | null; notice?: string }>
   ) => {
-    if (isTransitioning) return;
+    if (isFetching) return;
 
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     const runId = ++transitionRunRef.current;
 
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    setIsTransitioning(true);
+    setIsFetching(true);
     setStatusNotice(null);
     setShareOpen(false);
 
-    if (!reducedMotion && quote) {
-      setIsExiting(true);
-    }
-
-    const exitWait =
-      reducedMotion || !quote
-        ? Promise.resolve()
-        : new Promise<void>((resolve) => window.setTimeout(resolve, EXIT_DURATION_MS));
-
     try {
-      const [result] = await Promise.all([loadTask(controller.signal), exitWait]);
+      const result = await loadTask(controller.signal);
       if (transitionRunRef.current !== runId) return;
 
       if (result.nextQuote) {
-        setQuote(result.nextQuote);
-        setError(null);
-        setCopied(false);
-        setRevealSeq((s) => s + 1);
+        applyNextQuote(result.nextQuote);
       }
       if (result.notice) {
         setStatusNotice(result.notice);
@@ -89,17 +156,16 @@ export default function SingularQuoteStage({
       setStatusNotice(err instanceof Error ? err.message : "Could not load passage.");
     } finally {
       if (transitionRunRef.current === runId) {
-        setIsExiting(false);
-        setIsTransitioning(false);
+        setIsFetching(false);
       }
     }
   };
 
   const handleNextQuote = () => {
-    if (isTransitioning || !quote) return;
+    if (isFetching || !quote) return;
     const currentId = quote.id;
 
-    void transitionQuote(async (signal) => {
+    void loadQuote(async (signal) => {
       const res = await fetch(
         `/api/quote/random?exclude=${encodeURIComponent(currentId)}`,
         { cache: "no-store", signal }
@@ -122,15 +188,15 @@ export default function SingularQuoteStage({
   };
 
   const handleResetToLatest = () => {
-    if (isTransitioning || !initialQuote) return;
-    void transitionQuote(async () => ({
-      nextQuote: initialQuote,
-    }));
+    if (isFetching || !initialQuote) return;
+    setStatusNotice(null);
+    setShareOpen(false);
+    applyNextQuote(initialQuote);
   };
 
   const handleRetryToday = () => {
-    if (isTransitioning) return;
-    void transitionQuote(async (signal) => {
+    if (isFetching) return;
+    void loadQuote(async (signal) => {
       const res = await fetch("/api/quote/today", { cache: "no-store", signal });
       if (!res.ok) throw new Error("No quote available right now.");
       const row = await res.json();
@@ -140,7 +206,7 @@ export default function SingularQuoteStage({
 
   const handleCopy = async () => {
     if (!quote) return;
-    const text = `"${quote.content}" — ${quote.author}`;
+    const text = `"${quote.content}" - ${quote.author}`;
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -175,19 +241,19 @@ export default function SingularQuoteStage({
               type="button"
               className="reset-btn"
               onClick={handleRetryToday}
-              disabled={isTransitioning}
+              disabled={isFetching}
             >
               Try again
             </button>
           </div>
         ) : (
-          <article
-            key={`${quote.id}-${revealSeq}`}
-            className={`singular-article${isExiting ? " is-exiting" : ""}`}
-          >
+          <article className="singular-article">
             {/* Eyebrow / Dateline */}
             <div className="singular-eyebrow enter" style={{ ["--d" as string]: 0 }}>
-              <span className="kicker">
+              <span
+                key={`eyebrow-${quote.id}-${revealSeq}`}
+                className={revealSeq > 0 ? "kicker text-swap-in" : "kicker"}
+              >
                 {isViewingLatest ? "This Week" : "Archive"} / {quote.weekLabel}
               </span>
 
@@ -196,61 +262,70 @@ export default function SingularQuoteStage({
                   type="button"
                   className="quote-action-btn kicker singular-latest-btn"
                   onClick={handleResetToLatest}
-                  disabled={isTransitioning}
+                  disabled={isFetching}
                 >
                   Back to latest
                 </button>
               )}
             </div>
 
-            {/* Passage with left-to-right letter scramble resolve */}
-            <blockquote
-              className="singular-blockquote enter"
-              style={{ ["--d" as string]: 1 }}
-            >
-              <ScrambleText
-                text={quote.content}
-                triggerKey={`${quote.id}-${revealSeq}`}
-              />
-            </blockquote>
+            {/* Smoothly height-interpolated quote & attribution region */}
+            <div ref={slotRef} className="singular-quote-slot">
+              <div ref={innerRef} className="singular-quote-inner">
+                <blockquote
+                  className="singular-blockquote enter"
+                  style={{ ["--d" as string]: 1 }}
+                >
+                  <ScrambleText
+                    text={quote.content}
+                    triggerKey={`${quote.id}-${revealSeq}`}
+                  />
+                </blockquote>
 
-            {/* Attribution */}
-            <div
-              className="singular-attribution enter"
-              style={{ ["--d" as string]: 2 }}
-            >
-              <Link
-                href={`/library?author=${encodeURIComponent(quote.author)}`}
-                className="author-chip"
-                data-tooltip={`Filter library by ${quote.author}`}
-              >
-                {quote.author}
-              </Link>
-
-              {quote.sourceLabel && (
-                <>
-                  <span className="quote-sep" aria-hidden="true">
-                    /
-                  </span>
+                <div
+                  key={`attr-${quote.id}-${revealSeq}`}
+                  className={
+                    revealSeq > 0
+                      ? "singular-attribution text-swap-in"
+                      : "singular-attribution enter"
+                  }
+                  style={revealSeq === 0 ? { ["--d" as string]: 2 } : undefined}
+                >
                   <Link
-                    href={`/library?source=${encodeURIComponent(quote.sourceLabel)}`}
-                    className="source-chip quote-work"
-                    data-tooltip={`Filter library by ${quote.sourceLabel}`}
+                    href={`/library?author=${encodeURIComponent(quote.author)}`}
+                    className="author-chip"
+                    data-tooltip={`Filter library by ${quote.author}`}
                   >
-                    {quote.sourceLabel}
+                    {quote.author}
                   </Link>
-                </>
-              )}
+
+                  {quote.sourceLabel && (
+                    <>
+                      <span className="quote-sep" aria-hidden="true">
+                        /
+                      </span>
+                      <Link
+                        href={`/library?source=${encodeURIComponent(quote.sourceLabel)}`}
+                        className="source-chip quote-work"
+                        data-tooltip={`Filter library by ${quote.sourceLabel}`}
+                      >
+                        {quote.sourceLabel}
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Quiet Action Bar */}
+            {/* Stationary Action Bar */}
             <div className="singular-controls enter" style={{ ["--d" as string]: 3 }}>
               <div className="singular-primary-actions">
                 <button
                   type="button"
                   className="stage-btn stage-btn--primary"
                   onClick={handleNextQuote}
-                  disabled={isTransitioning}
+                  disabled={isFetching}
+                  aria-busy={isFetching}
                   aria-label="Show another historical quote"
                 >
                   <span>Another thought</span>

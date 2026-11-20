@@ -274,7 +274,7 @@ export default function QuotesArchive({
   }, []);
 
   const handleCopy = async (quote: QuoteItem) => {
-    const formatted = `"${quote.content}" — ${quote.author}`;
+    const formatted = `"${quote.content}" - ${quote.author}`;
     try {
       await navigator.clipboard.writeText(formatted);
     } catch {
@@ -377,7 +377,7 @@ export default function QuotesArchive({
         >
           <div className="search-wrap">
             <label htmlFor="quote-search" className="sr-only">
-              Filter by quote, author, or source
+              Filter by quote, author or source
             </label>
             <input
               id="quote-search"
@@ -385,7 +385,7 @@ export default function QuotesArchive({
               className="search-input"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Filter by quote, author, or source…"
+              placeholder="Filter by quote, author or source…"
               autoComplete="off"
               spellCheck={false}
             />
@@ -587,7 +587,7 @@ export default function QuotesArchive({
           className="authors-popover"
           style={popoverStyle}
           role="dialog"
-          aria-label="Filter by author, source, or year"
+          aria-label="Filter by author, source or year"
         >
           <div className="popover-head">
             <span className="popover-title">Filters</span>

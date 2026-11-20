@@ -38,7 +38,7 @@
   --r-lg: 14px;
   --r-pill: 999px;
 
-  /* Motion — calm, deliberate pacing */
+  /* Motion - calm, deliberate pacing */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-spring: cubic-bezier(0.22, 1.24, 0.36, 1);
@@ -48,7 +48,7 @@
 
   color-scheme: light;
 
-  /* Light — Crisp gallery off-white + Oxblood accent */
+  /* Light - Crisp gallery off-white + Oxblood accent */
   --bg: #fafafa;
   --bg-raised: #f2f2ef;
   --surface: #ffffff;
@@ -81,7 +81,7 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  /* Dark — Warm matte obsidian study + Rose accent */
+  /* Dark - Warm matte obsidian study + Rose accent */
   --bg: #171614;
   --bg-raised: #1f1e1b;
   --surface: #22201d;
