@@ -30,7 +30,9 @@ export async function generateMetadata({ params }: QuotePageProps): Promise<Meta
   const excerpt =
     quote.content.length > 155 ? `${quote.content.slice(0, 152)}…` : quote.content;
   const canonicalUrl = absoluteUrl(`/quote/${quote.id}`);
-  const ogImageUrl = absoluteUrl(`/quote/${quote.id}/opengraph-image`);
+  const ogImageUrl = absoluteUrl(
+    `/og?id=${encodeURIComponent(quote.id)}&v=${encodeURIComponent(quote.publish_date)}`
+  );
   const pageTitle = quote.sourceLabel
     ? `${quote.author} (${quote.sourceLabel})`
     : `Quote by ${quote.author}`;

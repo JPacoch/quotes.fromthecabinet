@@ -31,6 +31,11 @@ export const metadata: Metadata = {
   creator: AUTHOR_NAME,
   publisher: AUTHOR_NAME,
   referrer: "origin-when-cross-origin",
+  icons: {
+    icon: [{ url: "/favicon.png", type: "image/png", sizes: "32x32" }],
+    shortcut: ["/favicon.png"],
+    apple: [{ url: "/favicon.png", type: "image/png" }],
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -40,7 +45,7 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     images: [
       {
-        url: absoluteUrl("/opengraph-image"),
+        url: absoluteUrl("/og"),
         width: 1200,
         height: 630,
         alt: SITE_NAME,
@@ -51,7 +56,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
-    images: [absoluteUrl("/opengraph-image")],
+    images: [absoluteUrl("/og")],
   },
   robots: {
     index: true,
