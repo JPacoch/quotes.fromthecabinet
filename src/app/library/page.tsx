@@ -25,9 +25,9 @@ export const metadata: Metadata = {
     description: LIBRARY_DESCRIPTION,
     images: [
       {
-        url: absoluteUrl("/opengraph-image"),
-        width: 1200,
-        height: 630,
+        url: absoluteUrl("/og_image.png"),
+        width: 1220,
+        height: 650,
         alt: `${LIBRARY_TITLE} - From the Cabinet`,
       },
     ],
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `${LIBRARY_TITLE} - From the Cabinet`,
     description: LIBRARY_DESCRIPTION,
-    images: [absoluteUrl("/opengraph-image")],
+    images: [absoluteUrl("/og_image.png")],
   },
 };
 
