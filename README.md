@@ -59,6 +59,22 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - `GET /api/quotes` - Returns all published quotes (`publish_date <= today`) ordered newest-first
 - `GET /api/cron/keepalive` - Performs a lightweight `quotes` count query (`HEAD`) for weekly database keepalive
 
+## Social Preview (`/og`) & Cache Refresh
+
+Open Graph and Twitter/X preview images (`1200 × 630` PNG) are dynamically generated at `/og` from the same Supabase `quotes` source of truth used by the live pages:
+
+- `GET /og` - Renders the active weekly quote (or a branded fallback if quote data is unavailable) with `Cache-Control: public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400` (`max-age=300` on fallback).
+- `GET /og?id=<id>&v=<publish_date>` - Versioned quote preview referenced by `/` and `/quote/[id]`, cached with `public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400`. When a new weekly quote publishes, `/` automatically emits a new `v` parameter so re-scraping crawlers fetch the updated image.
+- `GET /og?view=library` - Branded preview for `/library`.
+
+### Platform Caching Limitations
+
+Social platforms cache page metadata and preview images on their own schedules, even when `og:image` changes:
+
+- **Facebook / Meta:** Caches URL metadata until refreshed manually via the [Sharing Debugger](https://developers.facebook.com/tools/debug/) ("Scrape Again").
+- **LinkedIn:** Caches previews for up to ~7 days; force a refresh with the [LinkedIn Post Inspector](https://www.linkedin.com/post-inspector/).
+- **X (Twitter):** Re-fetches cards asynchronously when a URL is newly shared (or when a new query param is shared); older tweets keep the card snapshot captured at share time.
+
 ## License
 
 See [LICENSE](LICENSE) for details.

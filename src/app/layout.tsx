@@ -45,9 +45,9 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     images: [
       {
-        url: absoluteUrl("/og_image.png"),
-        width: 1220,
-        height: 650,
+        url: absoluteUrl("/og"),
+        width: 1200,
+        height: 630,
         alt: SITE_NAME,
       },
     ],
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
-    images: [absoluteUrl("/og_image.png")],
+    images: [absoluteUrl("/og")],
   },
   robots: {
     index: true,

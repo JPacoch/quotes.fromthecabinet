@@ -15,35 +15,58 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: {
-    absolute: SITE_NAME,
-  },
-  description: SITE_DESCRIPTION,
-  alternates: {
-    canonical: SITE_URL,
-  },
-  openGraph: {
-    type: "website",
-    url: SITE_URL,
-    title: SITE_NAME,
-    description: SITE_DESCRIPTION,
-    images: [
-      {
-        url: absoluteUrl("/og_image.png"),
-        width: 1220,
-        height: 650,
-        alt: SITE_NAME,
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: SITE_NAME,
-    description: SITE_DESCRIPTION,
-    images: [absoluteUrl("/og_image.png")],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { quote } = await fetchTodayQuote();
+
+  const ogImageUrl = quote
+    ? absoluteUrl(
+        `/og?id=${encodeURIComponent(quote.id)}&v=${encodeURIComponent(quote.publish_date)}`
+      )
+    : absoluteUrl("/og");
+
+  const excerpt =
+    quote && quote.content.length > 140
+      ? `${quote.content.slice(0, 137)}…`
+      : quote?.content;
+
+  const description = quote
+    ? `"${excerpt}" - ${quote.author}${quote.sourceLabel ? `, ${quote.sourceLabel}` : ""}`
+    : SITE_DESCRIPTION;
+
+  const imageAlt = quote
+    ? `Weekly quote by ${quote.author} — ${SITE_NAME}`
+    : SITE_NAME;
+
+  return {
+    title: {
+      absolute: SITE_NAME,
+    },
+    description,
+    alternates: {
+      canonical: SITE_URL,
+    },
+    openGraph: {
+      type: "website",
+      url: SITE_URL,
+      title: SITE_NAME,
+      description,
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: imageAlt,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: SITE_NAME,
+      description,
+      images: [ogImageUrl],
+    },
+  };
+}
 
 export default async function HomePage() {
   const { quote, totalCount, error } = await fetchTodayQuote();
