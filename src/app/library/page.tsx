@@ -41,7 +41,7 @@ export const metadata: Metadata = {
 };
 
 export default async function LibraryPage() {
-  const { quotes, todayQuoteId, error } = await fetchPublishedQuotes();
+  const { quotes, error } = await fetchPublishedQuotes();
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -96,7 +96,6 @@ export default async function LibraryPage() {
       <main id="main" className="site-main">
         <QuotesArchive
           initialQuotes={quotes}
-          todayQuoteId={todayQuoteId}
           initialError={error}
         />
       </main>

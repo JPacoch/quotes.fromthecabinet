@@ -7,13 +7,11 @@ import { formatTooltipHostPath, type QuoteItem } from "@/lib/quotes";
 
 interface QuotesArchiveProps {
   initialQuotes: QuoteItem[];
-  todayQuoteId: string | null;
   initialError: string | null;
 }
 
 export default function QuotesArchive({
   initialQuotes,
-  todayQuoteId,
   initialError,
 }: QuotesArchiveProps) {
   const router = useRouter();
@@ -480,8 +478,6 @@ export default function QuotesArchive({
           <ul ref={listRef} className="quotes-list">
             {filteredQuotes.map((quote, index) => {
               const isAboveFold = index < 5;
-              const isAccented =
-                quote.id === todayQuoteId || quote.content.length > 165;
               const isCopied = copiedId === quote.id;
 
               return (
@@ -491,9 +487,7 @@ export default function QuotesArchive({
                   style={isAboveFold ? { ["--d" as string]: index + 2 } : undefined}
                   data-reveal={isAboveFold ? undefined : "pending"}
                 >
-                  <blockquote
-                    className={`quote-passage${isAccented ? " quote-passage--accented" : ""}`}
-                  >
+                  <blockquote className="quote-passage">
                     {quote.content}
                   </blockquote>
 
